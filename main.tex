@@ -61,209 +61,54 @@ landradezanetti@gmail.com}}
 \maketitle
 
 \begin{abstract}
-Developers routinely report that their fixed-price AI coding subscription
-``does less than it used to,'' while vendors report monotonically improving
-benchmark scores. We show that both claims can be simultaneously true, and
-that the disagreement is a measurement failure rather than a dispute about
-facts: public benchmarks are \emph{capability-denominated} (they price a
-model), whereas a subscription is \emph{quota-denominated} (it prices an
-entitlement consumed by an agent harness whose appetite is itself drifting).
-We define the Real Task Purchasing power of a plan, $\RTP = Qs/c$, and derive
-an exact additive decomposition of its log change into four channels ---
-entitlement, capability, consumption and price --- of which only price is
-publicly observable. Three structural results follow. First, whenever the
-elasticity of solve rate with respect to token budget falls below one ---
-which concave test-time scaling guarantees --- the quota cost per solved task
-must rise, so capability gains are bought at a worsening exchange rate.
-Second, we give a falsifiable Jevons condition under which energy per solved
-task increases despite falling energy per token. Third, a simple
-retention--cost model shows that compressing quota is the profit-maximising
-response to fat-tailed agentic usage, so devaluation is a rational vendor
-behaviour rather than an accusation. We then specify a reproducible
-measurement protocol --- a normalised quota unit, an empirical entitlement
-probe, a frozen harness, a drift canary, and pre-registered hypotheses ---
-and report a design analysis showing that resolving a $10\%$ change in plan
-value needs a basket of roughly \nReqTen{} tasks. An individual developer's
-lived experience is therefore underpowered by about two orders of magnitude,
-which explains why the perception gap persists and why a shared index is
-needed. The design-analysis numbers are outputs of a declared simulation, not
-measurements of any plan; a small real pilot of a reference implementation,
-run on the author's own accounts, shows that the instrument works end to end
-and how underpowered a single developer's sample is, but it does not
-measure plan value.
+Developers report that their fixed-price AI coding subscription ``does less
+than it used to,'' while vendors report ever-improving benchmark scores. We
+show that both can be true: benchmarks are \emph{capability-denominated} (they
+price a model), whereas a subscription is \emph{quota-denominated} (it prices
+an entitlement consumed by an agent harness whose appetite drifts). We define
+the Real Task Purchasing power $\RTP=Qs/c$ and an exact additive decomposition
+of its log change into entitlement, capability, consumption and price, of
+which only price is public. Three structural results follow: concave
+test-time scaling forces the quota cost per solved task upward; a falsifiable
+Jevons condition governs energy per solved task; and quota compression is the
+profit-maximising response to fat-tailed agentic usage. We specify a
+reproducible measurement protocol (a normalised quota unit, an entitlement
+probe, a frozen harness, a drift canary, pre-registered hypotheses) and show
+that resolving a $10\%$ value change needs roughly \nReqTen{} tasks, so an
+individual developer's experience is underpowered by about two orders of
+magnitude. The design-analysis numbers come from a declared simulation. A
+small measured pilot of a reference implementation, run on the author's own
+accounts for three clients, shows that the instrument works end to end and how
+differently clients expose consumption; it does not measure plan value.
 \end{abstract}
 
 \begin{IEEEkeywords}
 AI coding assistants, agentic software engineering, cost-aware evaluation,
-benchmarking, index numbers, energy efficiency, LLM inference, software
-economics.
+benchmarking, index numbers, energy efficiency, software economics.
 \end{IEEEkeywords}
 
 \section{Introduction}
-
-A recurring complaint has followed every generation of commercial AI coding
-tools: \emph{the plan I pay for feels worse than it did six months ago}.
-The complaint is usually met with a rebuttal that is also true --- coding
-benchmark scores have risen sharply and continue to
-rise~\cite{jimenez2024swebench,jain2025livecodebench}. Both sides argue past
-each other because they are quoting prices in different currencies.
-
-A published benchmark score answers a \emph{capability-denominated} question:
-given an unbounded or unstated budget, what fraction of tasks does this model
-solve? A subscriber asks a \emph{quota-denominated} question: given the
-entitlement my \$$X$/month buys, how much shipped engineering work can I get
-before I am throttled? These two quantities are connected by three factors
-that all drift, mostly silently:
-
-\begin{enumerate}
-\item the \textbf{entitlement} $Q$ the plan grants, expressed in units the
-      vendor defines and may redefine (messages, tokens, credits, weekly
-      caps, per-model multipliers);
-\item the \textbf{capability} $s$ of whichever model the plan routes to on
-      the day you use it --- which is not contractually fixed, and which
-      measurably moves over time~\cite{chen2024drift};
-\item the \textbf{consumption} $c$ that a modern agent harness burns to
-      attempt one task, which has grown by orders of magnitude as
-      chain-of-thought, tool loops, repository search and test-repair cycles
-      became standard practice~\cite{wei2022cot,snell2024scaling,yang2024sweagent}.
-\end{enumerate}
-
-Only the price $P$ is contractual and public. The other three are private to
-the vendor, and the product of the four is what the user actually buys. A
-plan can therefore be devalued to half its former usefulness without a single
-line of the pricing page changing --- the same way a currency can be debased
-without altering the number printed on the note.
-
-This paper takes the folk question in its title seriously enough to make it
-measurable. We treat a coding subscription as a good whose real price should
-be tracked with the machinery economists use for consumer
-prices~\cite{fisher1922index,ilo2004cpi}: a fixed basket of tasks, an index
-over time, an explicit substitution-bias analysis, and a hedonic adjustment
-for quality. The novel object is the denominator: instead of pricing the
-basket in dollars, we price it in the plan's own entitlement.
-
-\subsection{Contributions}
-
-\begin{itemize}
-\item \textbf{A value model} for coding subscriptions
-      (Section~\ref{sec:model}) built on a \emph{Normalised Quota Unit}
-      that makes heterogeneous, undisclosed meters comparable across vendors
-      and across time, together with an exact additive four-channel
-      decomposition of the change in value (Proposition~\ref{prop:decomp}).
-\item \textbf{Three structural results} (Section~\ref{sec:why}) explaining
-      why value can fall while capability rises: a concavity result forcing
-      quota cost per solved task upward
-      (Proposition~\ref{prop:elasticity}); a falsifiable Jevons condition
-      for energy per solved task (Proposition~\ref{prop:jevons}); and a
-      vendor-side result showing that quota compression maximises profit
-      under fat-tailed agentic usage (Proposition~\ref{prop:vendor}).
-\item \textbf{A measurement protocol}, \textsc{Planmeter}
-      (Section~\ref{sec:protocol}): basket construction with contamination
-      control, harness freezing, an entitlement saturation probe, a
-      capability-drift canary, an instrumented run record, and five
-      pre-registered hypotheses.
-\item \textbf{A design analysis} (Section~\ref{sec:sim}) giving closed-form
-      sample sizes for the index and showing that a solo developer's
-      experience cannot statistically resolve the devaluation they perceive.
-\item \textbf{A reference implementation and a small real pilot}
-      (Section~\ref{sec:harness}): an open harness with adapters for three
-      coding-assistant clients, run end to end on the author's own accounts,
-      whose main finding is how differently each client exposes consumption.
-\item \textbf{A disclosure artifact}, the \emph{Plan Value Card}
-      (Section~\ref{sec:card}), in the spirit of model
-      cards~\cite{mitchell2019modelcards} and
-      datasheets~\cite{gebru2021datasheets}.
-\end{itemize}
-
-\subsection{What this paper does and does not claim}
 \label{sec:scope}
 
-This is an instrument paper. Its contribution is a theory of the quantity to
-be measured and a protocol for measuring it. Every numeric value reported in
-Section~\ref{sec:sim} is the output of a simulation whose parameters are
-declared in Table~\ref{tab:scenario}; none of them is a measurement of any
-commercial plan, and none should be cited as one. Section~\ref{sec:harness}
-separately reports a small \emph{measured} pilot of the reference
-implementation, run on the author's own accounts and labelled as such; it is
-far too underpowered to estimate plan value (Appendix~\ref{app:power}) and
-reproduces no vendor price or quota. We do not reproduce pricing tables that
-would be stale before publication, and do not assert that any observed
-devaluation has occurred.
-Section~\ref{sec:ethics} states the terms-of-service boundary that a
-deployment of this protocol must respect.
-
-\section{Background and Related Work}
-
-\subsection{Capability-denominated benchmarks}
-Code benchmarks evolved from function-level synthesis
-(HumanEval~\cite{chen2021humaneval}, MBPP~\cite{austin2021mbpp}) to
-repository-level issue resolution
-(SWE-bench~\cite{jimenez2024swebench} and its human-validated
-subset~\cite{openai2024swebenchverified}), to contamination-resistant rolling
-sets~\cite{jain2025livecodebench} and terminal-native agent
-tasks~\cite{terminalbench2025,aider2024polyglot}. Scores are reported per
-\emph{model}, but they are produced by a \emph{scaffold} ---
-SWE-agent~\cite{yang2024sweagent}, OpenHands~\cite{wang2025openhands} --- and
-scaffold changes move scores as much as model changes do. Budgets are usually
-unreported, so the same headline number can correspond to wildly different
-resource consumption.
-
-\subsection{Cost-aware evaluation}
-Kapoor et al.~\cite{kapoor2024agents} make the case directly: agent
-evaluations that ignore cost reward wasteful scaffolds, and accuracy should
-be read on a cost--accuracy Pareto frontier. FrugalGPT~\cite{chen2023frugalgpt}
-optimises cascades against dollar cost, and HELM~\cite{liang2023helm} reports
-efficiency alongside accuracy. All of these denominate cost in
-\emph{API dollars}. That is the right unit for someone paying per token and
-the wrong unit for the tens of millions of developers on flat-rate plans,
-whose binding constraint is an entitlement they cannot observe. To our
-knowledge no prior work measures the subscription rather than the model.
-
-\subsection{Capability drift and deprecation}
-Chen et al.~\cite{chen2024drift} document measurable behavioural change in a
-fixed commercial endpoint over months. Contemporary practice adds two further
-sources of drift invisible to the user: server-side routing among models of
-different cost, and deprecation of the endpoint a longitudinal study was
-anchored to. Section~\ref{sec:infeasible} shows that the latter is not merely
-inconvenient --- it makes an entire family of index numbers uncomputable.
-
-\subsection{Energy of inference}
-Per-token inference energy has fallen substantially through batching, paged
-attention~\cite{kwon2023vllm}, speculative decoding~\cite{leviathan2023speculative}
-and hardware turnover, and careful measurement methodology exists at the
-request level~\cite{samsi2023watts,luccioni2024powerhungry} and the
-lifecycle level~\cite{strubell2019energy,patterson2021carbon,luccioni2023bloom,henderson2020systematic}.
-Aggregate data-centre projections~\cite{masanet2020recalibrating,iea2025energyai}
-nevertheless keep rising. This is the classic Jevons
-structure~\cite{jevons1865coal}: efficiency per unit of consumption
-increases, consumption increases faster. Section~\ref{sec:jevons} states the
-condition in the units a developer cares about --- joules per solved task,
-not joules per token.
-
-\subsection{Productivity evidence}
-Field studies of AI assistance report large task-level speedups in controlled
-settings~\cite{peng2023copilot,brynjolfsson2025genai}, while a randomised
-study of experienced maintainers on their own repositories found a
-\emph{slowdown} despite participants believing they had been sped
-up~\cite{metr2025slowdown}. That gap between perceived and measured value is
-precisely the gap this paper instruments, and it motivates the hedonic
-correction of Section~\ref{sec:hedonic}: a passing test is not the same as
-accepted work.
-
-\subsection{Index numbers, quality and information asymmetry}
-We borrow directly from price-index practice: Laspeyres and Paasche forms and
-the Fisher ideal index~\cite{fisher1922index,ilo2004cpi}, substitution
-bias~\cite{boskin1996toward}, hedonic quality
-adjustment~\cite{triplett2006hedonic}, and Nordhaus's long-run real price of
-computation~\cite{nordhaus2007computing}. The market-design reading is
-Akerlof's~\cite{akerlof1970lemons}: when only the seller can observe the
-quality of the delivered good, buyers discount all sellers, and the honest
-seller has no way to signal. A published index is exactly such a signalling
-device. Versioning a bundled information good under heterogeneous
-willingness-to-pay is the classic
-treatment~\cite{shapiro1999information}; our Proposition~\ref{prop:vendor}
-adds what happens when the usage distribution's tail is fattened by
-autonomous agents.
+A recurring complaint follows every generation of AI coding tools: \emph{the
+plan I pay for feels worse than it did six months ago}. The usual rebuttal is
+also true: coding benchmark scores keep
+rising~\cite{jimenez2024swebench,jain2025livecodebench}. Both sides argue past
+each other because they quote prices in different currencies. A benchmark
+score answers a \emph{capability-denominated} question: with an unstated
+budget, what fraction of tasks does this model solve? A subscriber asks a
+\emph{quota-denominated} one: given what my monthly fee buys, how much
+engineering work can I ship before I am throttled? The two are linked by three
+factors that drift, mostly silently: the \textbf{entitlement} $Q$ the plan
+grants, in units the vendor defines and may redefine; the \textbf{capability}
+$s$ of whichever model the plan routes to on the day, which is not
+contractually fixed and measurably moves~\cite{chen2024drift}; and the
+\textbf{consumption} $c$ an agent harness burns per attempt, which has grown
+by orders of magnitude with chain-of-thought, tool loops and test-repair
+cycles~\cite{wei2022cot,snell2024scaling,yang2024sweagent}. Only the price $P$
+is contractual and public, so a plan can be devalued to half its usefulness
+without a word on the pricing page changing, as a currency can be debased
+without altering the number printed on the note.
 
 \begin{figure}[t]
 \centering
@@ -297,83 +142,93 @@ projection of the fourth layer alone.}
 \label{fig:stack}
 \end{figure}
 
+We therefore treat a subscription as a good whose real price should be tracked
+with consumer-price machinery~\cite{fisher1922index,ilo2004cpi}: a fixed task
+basket, an index over time, a substitution-bias analysis and a quality
+adjustment. The novel object is the denominator: instead of pricing the basket
+in dollars, we price it in the plan's own entitlement.
+
+\textbf{Related work.} Code benchmarks moved from function
+synthesis~\cite{chen2021humaneval,austin2021mbpp} to repository-level issue
+resolution~\cite{jimenez2024swebench,openai2024swebenchverified} and rolling,
+contamination-resistant sets~\cite{jain2025livecodebench}; their scores come
+from a scaffold~\cite{yang2024sweagent,wang2025openhands} and are reported per
+model, usually without budgets. Cost-aware evaluation~\cite{kapoor2024agents,%
+chen2023frugalgpt,liang2023helm} denominates cost in API dollars, the wrong
+unit for flat-rate subscribers whose binding constraint is an unobserved
+entitlement; to our knowledge no prior work measures the subscription rather
+than the model. Per-token inference energy has fallen~\cite{kwon2023vllm,%
+leviathan2023speculative,samsi2023watts,luccioni2024powerhungry} while
+aggregate demand rises~\cite{masanet2020recalibrating,iea2025energyai}, the
+Jevons structure~\cite{jevons1865coal}. Field evidence on productivity is
+mixed~\cite{peng2023copilot,brynjolfsson2025genai,metr2025slowdown}. We borrow
+Laspeyres, Paasche and Fisher indices~\cite{fisher1922index,ilo2004cpi},
+substitution bias~\cite{boskin1996toward} and hedonic
+adjustment~\cite{triplett2006hedonic}, and read the market through Akerlof's
+lemons~\cite{akerlof1970lemons}.
+
+\textbf{Contributions.} (i) A value model built on a \emph{Normalised Quota
+Unit} and an exact four-channel decomposition (Section~\ref{sec:model}).
+(ii) Three structural results on why value can fall while capability rises
+(Section~\ref{sec:why}). (iii) \textsc{Planmeter}, a measurement protocol
+(Section~\ref{sec:protocol}). (iv) A closed-form design analysis of the
+evidence a claim of devaluation needs (Section~\ref{sec:sim}). (v) A reference
+implementation with adapters for three coding-assistant clients and a small
+real pilot (Section~\ref{sec:harness}). (vi) A one-page disclosure artifact,
+the \emph{Plan Value Card} (Section~\ref{sec:card}).
+
+\textbf{Scope.} This is an instrument paper. Every number in
+Section~\ref{sec:sim} is the output of a simulation with declared parameters
+(Table~\ref{tab:scenario}) and is not a measurement of any commercial plan.
+Section~\ref{sec:harness} separately reports a small \emph{measured} pilot,
+labelled as such, far too underpowered to estimate plan value
+(Appendix~\ref{app:power}); no vendor price is reproduced, and we do not assert
+that any devaluation has occurred.
+
 \section{A Value Model for Coding Subscriptions}
 \label{sec:model}
 
-\subsection{Objects}
-
 \begin{definition}[Task basket]
-A basket $\mathcal{B}=\{(b_1,w_1),\dots,(b_n,w_n)\}$, $\sum_i w_i = 1$, where
-each $b_i$ is a software-engineering task pinned to a repository commit and
-equipped with a machine-checkable oracle (a test suite, a differential
-oracle, or a build-and-lint gate). Weights encode the mix of work a given
-population of developers actually does.
+A basket $\mathcal{B}=\{(b_i,w_i)\}$, $\sum_i w_i = 1$, where each $b_i$ is a
+software-engineering task pinned to a repository commit with a
+machine-checkable oracle (tests, a differential oracle, or a build-and-lint
+gate). A \emph{harness} $h$ is the full client-side configuration: agent loop,
+tools, context and retry policy, step limit, temperature and model selector.
 \end{definition}
 
-\begin{definition}[Epoch, plan, harness]
-An epoch $t$ is a measurement window (we use a calendar month). A plan
-$p$ has public price $P(p,t)$ per epoch. A harness $h$ is the complete
-client-side configuration: agent loop, tool set, context policy, retry
-policy, step limit, temperature, and the model selector the plan exposes.
-\end{definition}
-
-A single \emph{run} of $b_i$ under $(p,h,t)$ yields four observables:
-$x_i\in\{0,1\}$ oracle success; $u_i>0$ quota consumed;
-$\tau_i>0$ tokens consumed, split into prefill, decode, cached-read and
-cached-write classes; and $\kappa_i\in[0,1]$ a review-quality score.
-
-\subsection{The Normalised Quota Unit}
-
-Vendors meter in incomparable units, redefine them, and apply per-model
-multipliers. We therefore define the unit endogenously.
+A run of $b_i$ under plan $p$, harness $h$ and epoch $t$ (a calendar month)
+yields oracle success $x_i\in\{0,1\}$, quota consumed $u_i>0$, tokens
+$\tau_i$ (prefill, decode, cached-read, cached-write) and a review-quality
+score $\kappa_i\in[0,1]$. Vendors meter in incomparable units and redefine
+them, so we define the unit endogenously.
 
 \begin{definition}[\NQU]
-Fix a calibration task $b_0$ and a reference harness $h_0$, both frozen for
-the life of the study. One \NQU{} is the quota consumed by one execution of
+Fix a calibration task $b_0$ and reference harness $h_0$, frozen for the life
+of the study. One \NQU{} is the quota consumed by one execution of
 $(b_0,h_0)$. The entitlement $Q(p,t)$ is the number of such executions
-completable within one billing epoch before the plan throttles.
+completable in one billing epoch before the plan throttles.
 \end{definition}
 
-This makes $Q$ an \emph{observable} even when the vendor discloses nothing:
-it is measured, not read off a pricing page (Algorithm~\ref{alg:probe}).
-It also makes meter redefinition detectable, because \NQU{} is anchored to
-$b_0$'s token counts, which the API still reports.
-
-\subsection{Purchasing power}
-
-Write $\bar{x}_i,\bar{u}_i$ for means over $k$ repetitions. Define basket
-solve rate and basket consumption per attempt:
-\begin{equation}
-s(t) \eqdef \sum_i w_i \bar{x}_i(t), \qquad
-c(t) \eqdef \sum_i w_i \bar{u}_i(t) .
-\end{equation}
-The quota cost of one unit of delivered work and the amount of work a plan
-buys per epoch are then
+This makes $Q$ an \emph{observable} even when the vendor discloses nothing
+(Algorithm~\ref{alg:probe}), and makes meter redefinition detectable, since
+\NQU{} is anchored to $b_0$'s token counts. With $\bar x_i,\bar u_i$ the means
+over $k$ repetitions, define basket solve rate and consumption per attempt
+$s(t)\eqdef\sum_i w_i\bar x_i$, $c(t)\eqdef\sum_i w_i\bar u_i$, the quota cost
+per solve and the work a plan buys per epoch,
 \begin{equation}
 \CPS(t) \eqdef \frac{c(t)}{s(t)}, \qquad
-\RTP(p,t) \eqdef \frac{Q(p,t)\, s(t)}{c(t)} ,
+\RTP(p,t) \eqdef \frac{Q(p,t)\, s(t)}{c(t)},
 \label{eq:rtp}
 \end{equation}
-in $\NQU$ per solve and in solves per epoch respectively.
-$\RTP$ is the honest answer to
-``what does this plan do for me this month.'' Normalising by price gives
-value per dollar,
+and value per dollar
 \begin{equation}
 V(p,t) \eqdef \frac{\RTP(p,t)}{P(p,t)} = \frac{Q(p,t)\,s(t)}{c(t)\,P(p,t)} .
 \label{eq:value}
 \end{equation}
-
-\begin{definition}[Coding-Plan Purchasing-power Index]
-$\CPPI(p,t;t_0) \eqdef V(p,t)/V(p,t_0)$, with continuously compounded
-\emph{debasement rate}
-$\delta \eqdef -\ln \CPPI(p,t;t_0)/(t-t_0)$.
-\end{definition}
-
-A plan with $\delta = 0.30\,\text{yr}^{-1}$ loses a quarter of its real value
-per year at an unchanged sticker price. Reporting $\delta$ alongside $P$ is
-the central practical proposal of this paper.
-
-\subsection{The four channels}
+The index is $\CPPI(p,t;t_0)\eqdef V(p,t)/V(p,t_0)$ with continuously
+compounded \emph{debasement rate} $\delta\eqdef-\ln\CPPI/(t-t_0)$: a plan with
+$\delta=0.30\,\text{yr}^{-1}$ loses a quarter of its real value per year at an
+unchanged sticker price.
 
 \begin{proposition}[Exact additive decomposition]
 \label{prop:decomp}
@@ -388,74 +243,43 @@ For any two epochs,
 \end{equation}
 \end{proposition}
 \begin{IEEEproof}
-Immediate from~\eqref{eq:value} and the additivity of $\ln$ over products
-and quotients. The decomposition is exact, not a first-order approximation,
-which is why we work in logs throughout.
+Immediate from~\eqref{eq:value} and the additivity of $\ln$; it is exact, not
+a first-order approximation.
 \end{IEEEproof}
 
-Equation~\eqref{eq:decomp} is the analytical core of the paper. It says the
-four causes of felt devaluation are separable and individually estimable, and
-it immediately explains the public argument: vendors quote the second term,
-users feel the sum, and the first and third terms --- the ones with the
-largest recent movement --- are unobservable to everyone outside the vendor.
+Vendors quote the second term, users feel the sum, and the first and third,
+which have moved most, are unobservable outside the vendor.
 
-\subsection{Quality adjustment}
-\label{sec:hedonic}
+\textbf{Quality adjustment.} A green test suite lower-bounds value. Following
+hedonic practice~\cite{triplett2006hedonic} we also report a quality-weighted
+rate $\tilde s\eqdef\sum_i w_i\,\overline{x_i\kappa_i}$, with $\kappa$ from a
+frozen, human-calibrated rubric judge~\cite{zheng2023judge} (a drifting judge
+contaminates the capability channel). Reporting $s$ and $\tilde s$ separates
+``it passes'' from ``I would merge it''~\cite{metr2025slowdown}.
 
-A green test suite is a lower bound on value, not value. Following hedonic
-practice~\cite{triplett2006hedonic} we replace $s$ with a quality-weighted
-solve rate
-\begin{equation}
-\tilde{s}(t) \eqdef \sum_i w_i \, \overline{x_i \kappa_i}(t),
-\end{equation}
-where $\kappa_i$ scores the accepted patch on diff minimality, absence of
-dead or duplicated code, test quality, and adherence to repository
-convention. $\kappa$ may be produced by a rubric-driven LLM
-judge~\cite{zheng2023judge} provided the judge model and prompt are frozen
-for the life of the study and calibrated against human review on a held-out
-sample; a drifting judge silently contaminates the capability channel.
-Reporting both $s$ and $\tilde{s}$ separates ``it passes'' from ``I would
-merge it,'' the distinction that~\cite{metr2025slowdown} suggests dominates
-real developer time.
+\textbf{Substitution bias and infeasibility.}
 
-\subsection{Substitution bias and index infeasibility}
-\label{sec:infeasible}
-
-Users re-optimise when quota binds: they switch to a cheaper model tier,
-shorten context, disable extended reasoning, or batch work differently. A
-fixed-harness index therefore overstates the loss, exactly as a fixed-basket
-consumer index overstates inflation~\cite{boskin1996toward}. We report both
-bounds. With $h_{t_0}$ the base-epoch harness and $h_t$ the epoch-$t$
-re-optimised harness,
-\begin{equation}
-L(t) = \frac{V(h_{t_0},t)}{V(h_{t_0},t_0)}, \quad
-Pa(t) = \frac{V(h_{t},t)}{V(h_{t},t_0)},
-\end{equation}
-with the Fisher ideal index $F(t)=\sqrt{L(t)\,Pa(t)}$
-\cite{fisher1922index} as the headline figure.
+Users re-optimise when quota binds, so a fixed-harness index overstates the
+loss as a fixed-basket CPI overstates inflation~\cite{boskin1996toward}. With
+$h_{t_0}$ the base harness and $h_t$ the re-optimised one,
+$L(t)=V(h_{t_0},t)/V(h_{t_0},t_0)$ and $Pa(t)=V(h_t,t)/V(h_t,t_0)$, and the
+Fisher index $F=\sqrt{L\,Pa}$~\cite{fisher1922index} is the headline.
 
 \begin{proposition}[Infeasibility under deprecation]
 \label{prop:deprecation}
 If the model or endpoint available at $t_0$ is withdrawn before $t$, the
-denominator $V(h_t,t_0)$ is unmeasurable and $Pa(t)$, hence $F(t)$, does not
-exist. Only the Laspeyres bound survives, and only for as long as the
-base-epoch harness remains runnable.
+denominator $V(h_t,t_0)$ is unmeasurable, so $Pa(t)$ and $F(t)$ do not exist;
+only the Laspeyres bound survives, and only while the base harness is runnable.
 \end{proposition}
 
-This is not a technicality. It means a vendor that retires old endpoints on
-a cadence shorter than the study window destroys the comparability of its own
-product over time --- the good whose price we are trying to track ceases to
-exist. Long-run measurement of AI subscriptions requires archived reference
-endpoints in the way metrology requires reference artefacts. We return to
-this in Section~\ref{sec:discussion}.
+A vendor that retires endpoints faster than the study window destroys the
+comparability of its own product.
 
 \section{Why Value Can Fall While Capability Rises}
 \label{sec:why}
 
-\subsection{Concavity forces the unit cost of work upward}
-
-Let $s(\tau)$ be the solve rate as a function of per-attempt token budget
-$\tau$, and $\eta_{s,\tau} \eqdef (\mathrm{d}s/\mathrm{d}\tau)(\tau/s)$ its
+\textbf{Concavity.} Let $s(\tau)$ be the solve rate at per-attempt token
+budget $\tau$ and $\eta_{s,\tau}\eqdef(\mathrm{d}s/\mathrm{d}\tau)(\tau/s)$ its
 elasticity.
 
 \begin{proposition}[Rising cost per solved task]
@@ -464,104 +288,67 @@ $\dfrac{\mathrm{d}}{\mathrm{d}\tau}\left(\dfrac{\tau}{s(\tau)}\right) > 0
 \iff \eta_{s,\tau} < 1$.
 \end{proposition}
 \begin{IEEEproof}
-$\frac{\mathrm{d}}{\mathrm{d}\tau}\frac{\tau}{s}
-= \frac{s - \tau s'}{s^2}
-= \frac{1}{s}\left(1 - \eta_{s,\tau}\right)$, and $s>0$.
+$\frac{\mathrm{d}}{\mathrm{d}\tau}\frac{\tau}{s}=\frac{s-\tau s'}{s^2}
+=\frac{1}{s}(1-\eta_{s,\tau})$ and $s>0$.
 \end{IEEEproof}
 
 \begin{corollary}
 \label{cor:logscaling}
-Under the log-linear test-time scaling regime reported for reasoning
-models~\cite{snell2024scaling,deepseek2025r1}, $s \approx a + b\ln\tau$ gives
-$\eta_{s,\tau} = b/s \to 0$ as $s$ saturates. Cost per solved task then grows
-asymptotically linearly in the budget: every additional point of accuracy is
-purchased at a strictly worse exchange rate than the last.
+Under the log-linear test-time scaling reported for reasoning
+models~\cite{snell2024scaling,deepseek2025r1}, $s\approx a+b\ln\tau$ gives
+$\eta_{s,\tau}=b/s\to0$ as $s$ saturates, so cost per solved task grows
+asymptotically linearly in the budget: each extra point of accuracy costs more
+than the last.
 \end{corollary}
 
-Fig.~\ref{fig:elasticity} makes the geometry concrete on a saturating curve
-with shape parameter $\gamma=\gammaHill$. Unit cost is minimised at
-$\tau^\star \approx \tauStar \times 10^3$ tokens per attempt and rises
-monotonically thereafter; at a budget of $600\times10^3$ tokens --- ordinary
-for a present-day repository-level agent run --- the cost per solved task is
-already $\cpsRatio\times$ its minimum. The vendor's benchmark score and the
-user's throughput are both moving, in opposite directions, for the same
-reason.
+Fig.~\ref{fig:elasticity} shows this on a saturating curve with shape
+$\gamma=\gammaHill$: unit cost is minimal at $\tau^\star\approx\tauStar\times
+10^3$ tokens and rises thereafter; at $600\times10^3$ tokens, ordinary for a
+repository-level agent run, it is already $\cpsRatio\times$ the minimum.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_elasticity.pdf}
 \caption{Concave test-time scaling makes delivered work more expensive even
-as accuracy improves. (a) A saturating solve-rate curve; the dashed line
-marks unit elasticity. (b) The corresponding quota cost per solved task,
-$\tau/s(\tau)$, which is minimised at $\tau^\star$ and increases without
-bound. Agent harnesses operate far to the right of $\tau^\star$. Curve shape
-is declared, not fitted to any vendor.}
+as accuracy improves. (a) A saturating solve-rate curve; the dashed line marks
+unit elasticity. (b) Quota cost per solved task, $\tau/s(\tau)$, minimised at
+$\tau^\star$. Curve shape is declared, not fitted to any vendor.}
 \label{fig:elasticity}
 \end{figure*}
 
-\subsection{The iso-value map}
+\textbf{The progress trap.} At fixed price, Proposition~\ref{prop:decomp}
+makes the trade-off two-dimensional: value is unchanged exactly on the locus
+$\Delta\ln s=\Delta\ln c-\Delta\ln Q$. With an entitlement change of
+$\Delta\ln Q=\scendlnQ$, every point with a capability gain below
+$\Delta\ln c-\Delta\ln Q$ has capability strictly improving while value
+strictly falls, and no party is lying; the declared scenario of
+Table~\ref{tab:scenario} sits there.
 
-Holding price fixed, Proposition~\ref{prop:decomp} makes the trade-off
-two-dimensional. Fig.~\ref{fig:isovalue} plots $\Delta\ln V$ over the
-$(\Delta\ln s, \Delta\ln c)$ plane at an entitlement change of
-$\Delta\ln Q = \scendlnQ$. The black contour is the break-even locus
-$\Delta\ln s = \Delta\ln c - \Delta\ln Q$. Everything below and to the right
-of it is the region a marketing page describes as progress and a user
-experiences as loss. We call it the \emph{progress trap}: capability strictly
-improves, delivered value strictly falls, and no party is lying.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{figures/fig_isovalue.pdf}
-\caption{Iso-value map. Blue is value gain, red is value loss, the black
-contour is break-even. The marked point is the declared scenario of
-Table~\ref{tab:scenario}: capability up $25\%$, consumption up $2\times$,
-entitlement down $30\%$.}
-\label{fig:isovalue}
-\end{figure}
-
-\subsection{Energy: a Jevons condition at the task level}
+\textbf{Energy (task-level Jevons).}
 \label{sec:jevons}
-
-Let $e(t)$ be the marginal energy per token of the serving stack and
-$\bar\tau(t)$ the basket-mean tokens per attempt. Energy per solved task is
-\begin{equation}
-\EPS(t) = \frac{\bar\tau(t)\, e(t)}{s(t)} \quad [\si{\joule}/\text{solve}].
-\end{equation}
+With $e(t)$ the marginal energy per token and $\bar\tau(t)$ the mean tokens
+per attempt, energy per solved task is $\EPS=\bar\tau e/s$.
 
 \begin{proposition}[Task-level rebound]
 \label{prop:jevons}
 $\EPS$ increases between two epochs if and only if
 \begin{equation}
-\Delta \ln \bar\tau \;-\; \Delta \ln s \;>\; -\,\Delta \ln e .
+\Delta\ln\bar\tau-\Delta\ln s>-\Delta\ln e .
 \label{eq:jevons}
 \end{equation}
-That is: the environmental gain from serving efficiency is realised at the
-task level only when per-token efficiency improves faster than agent
-verbosity net of capability.
 \end{proposition}
 
-Condition~\eqref{eq:jevons} is falsifiable with the instrumentation of
-Section~\ref{sec:protocol}: $\bar\tau$ and $s$ are measured directly, and
-$e$ is bounded rather than asserted. We estimate $e$ bottom-up as
-\begin{equation}
-e \;=\; \mathrm{PUE}\cdot \overline{\mathrm{P}}_{\text{node}}
-\left(\frac{\phi}{\Lambda_{\text{prefill}}}
-    + \frac{1-\phi}{\Lambda_{\text{decode}}}\right) ,
-\label{eq:energy}
-\end{equation}
-a token-mix average of the per-phase energies, with
-$\overline{\mathrm{P}}_{\text{node}}$ the average node power, $\Lambda$ the
-measured token throughput in each phase, and $\phi$ the prefill share --- reporting an interval over a declared range of batch sizes and
-utilisations rather than a point estimate, following the methodology of
-\cite{samsi2023watts,luccioni2024powerhungry,henderson2020systematic}.
-Any study using~\eqref{eq:energy} must state that it is an external bound and
-not a vendor disclosure. Fig.~\ref{fig:jevons} shows the rebound for the
-declared scenario: a $\eGain\%$ reduction in energy per token is more than
-cancelled by a $\tauGrowth\times$ growth in tokens per attempt, leaving
-energy per solved task $\epsChange\%$ higher after twelve months. The slack
-in~\eqref{eq:jevons} is $\jevonsSlack$; per-token efficiency would have had
-to improve by that much again merely to hold the line.
+Serving efficiency helps at the task level only if per-token efficiency
+improves faster than agent verbosity net of capability. The condition is
+falsifiable: $\bar\tau$ and $s$ are measured, and $e$ is bounded bottom-up,
+$e=\mathrm{PUE}\cdot\overline{\mathrm{P}}_{\text{node}}
+(\phi/\Lambda_{\text{prefill}}+(1-\phi)/\Lambda_{\text{decode}})$, with
+$\Lambda$ the measured throughput per phase and $\phi$ the prefill share,
+reported as an interval~\cite{samsi2023watts,luccioni2024powerhungry,%
+henderson2020systematic}; it is an external bound, never a vendor disclosure. In the declared scenario a $\eGain\%$ drop in energy
+per token is more than cancelled by $\tauGrowth\times$ more tokens per
+attempt, leaving energy per solved task $\epsChange\%$ higher after twelve
+months, with slack $\jevonsSlack$ in~\eqref{eq:jevons}.
 
 \begin{figure*}[t]
 \centering
@@ -574,51 +361,39 @@ measurements.}
 \label{fig:jevons}
 \end{figure*}
 
-\subsection{The vendor's side: compression is rational}
-
-It is tempting to read devaluation as bad faith. A minimal model says
-otherwise. Let per-subscriber usage $U$ follow a Pareto law with tail index
-$\alpha$ and scale $u_m=1$ --- the standard shape once a minority of users
-run autonomous agents overnight. The vendor sets a quota $Q$; marginal
-serving cost is $\kappa$ per \NQU; retention is increasing and saturating in
-generosity, $R(Q)=Q^\theta/(Q^\theta+Q_c^\theta)$. Expected profit per
-subscriber is
-\begin{equation}
-\pi(Q) = R(Q)\,\bigl[P - \kappa\, m(Q)\bigr], \quad
-m(Q) \eqdef \mathbb{E}\!\left[\min(U,Q)\right],
-\end{equation}
-with $m(Q) = 1 + \frac{1 - Q^{1-\alpha}}{\alpha-1}$ and
-$m'(Q) = \Pr[U>Q] = Q^{-\alpha}$.
+\textbf{The vendor's side.} Devaluation need not be bad faith. Let usage $U$
+be Pareto with tail index $\alpha$ and scale $1$, the shape once a minority of
+users run agents overnight. The vendor sets quota $Q$ at marginal cost
+$\kappa$ per \NQU; retention is $R(Q)=Q^\theta/(Q^\theta+Q_c^\theta)$. Expected
+profit per subscriber is $\pi(Q)=R(Q)[P-\kappa\,m(Q)]$ with
+$m(Q)=\mathbb{E}[\min(U,Q)]$ and $m'(Q)=Q^{-\alpha}$.
 
 \begin{proposition}[Rational quota compression]
 \label{prop:vendor}
 Any interior optimum satisfies
 \begin{equation}
-\frac{R'(Q)}{R(Q)} \;=\; \frac{\kappa\, Q^{-\alpha}}{P - \kappa\, m(Q)} ,
+\frac{R'(Q)}{R(Q)}=\frac{\kappa\,Q^{-\alpha}}{P-\kappa\,m(Q)},
 \label{eq:foc}
 \end{equation}
-and an interior optimum exists precisely when $\alpha < 1+\theta$. Fattening
-the usage tail (decreasing $\alpha$) raises the right-hand side pointwise
-while leaving the left-hand side unchanged, so $Q^\star$ falls.
+and one exists precisely when $\alpha<1+\theta$. Fattening the tail
+(decreasing $\alpha$) raises the right-hand side pointwise and leaves the
+left unchanged, so $Q^\star$ falls.
 \end{proposition}
 \begin{IEEEproof}
-Differentiate $\ln \pi$ and set to zero to obtain~\eqref{eq:foc}. As
-$Q\to\infty$, $R'/R \sim \theta Q_c^\theta Q^{-(1+\theta)}$ while the
-right-hand side decays as $Q^{-\alpha}$; profit is eventually increasing in
-$Q$ iff $1+\theta < \alpha$, which gives the existence condition. For the
-comparative static, $\partial/\partial\alpha$ of the right-hand side is
-negative for $Q>1$, so decreasing $\alpha$ shifts the crossing point left.
+Differentiate $\ln\pi$ to get~\eqref{eq:foc}. As $Q\to\infty$,
+$R'/R\sim\theta Q_c^\theta Q^{-(1+\theta)}$ while the right side decays as
+$Q^{-\alpha}$; profit is eventually increasing iff $1+\theta<\alpha$. For the
+comparative static, $\partial/\partial\alpha$ of the right side is negative for
+$Q>1$, so decreasing $\alpha$ moves the crossing left.
 \end{IEEEproof}
 
-Fig.~\ref{fig:vendor} solves~\eqref{eq:foc} numerically at
-$P=\priceRef$, $\kappa=\kappaMarg$, $\theta=\thetaRet$. Moving the tail index
-from $\alphaThin$ to $\alphaFat$ --- the qualitative effect of agentic use
-arriving on a plan priced for chat use --- drives the optimal entitlement to
-$\times\QstarRel$ of its former level. Two consequences follow. First,
-subscribers are right that plans tighten and vendors are right that they must;
-the conflict is structural. Second, because the tail is what makes flat-rate
-unstable, flat-rate pricing for agentic workloads is a transitional regime,
-not an equilibrium (Section~\ref{sec:discussion}).
+Solving~\eqref{eq:foc} numerically at $P=\priceRef$, $\kappa=\kappaMarg$,
+$\theta=\thetaRet$, moving the tail index from $\alphaThin$ to $\alphaFat$ (the
+qualitative effect of agentic use arriving on a chat-priced plan) drives the
+optimal entitlement to $\times\QstarRel$ of its former level. Subscribers are
+right that plans tighten and vendors are right that they must: the conflict is
+structural, and flat rate for agentic workloads is a transitional regime
+(Section~\ref{sec:discussion}).
 
 \begin{figure}[t]
 \centering
@@ -632,171 +407,82 @@ parameters; the qualitative direction, not the magnitude, is the result.}
 \section{\textsc{Planmeter}: A Measurement Protocol}
 \label{sec:protocol}
 
-The model of Section~\ref{sec:model} is only useful if each of its four
-channels can be estimated by an outside party with one ordinary account.
-This section specifies how.
+Each channel of the model must be estimable by an outside party with one
+ordinary account.
 
-\subsection{Basket construction}
+\textbf{Basket.} We stratify by the shape of work, since consumption scales
+with agent depth rather than syntax: S1 local repair (weight $0.30$), S2
+multi-file feature ($0.35$), S3 repository-wide migration ($0.20$) and S4
+long-horizon issue with a declared step cap ($0.15$). Three contamination
+controls are mandatory, following~\cite{jain2025livecodebench}: tasks come
+from commits after every tested model's training cutoff and the basket rolls
+forward with a frozen legacy arm; a private hold-out third is never published;
+and task prose is paraphrased with perturbed identifiers.
 
-We stratify by the shape of work, not by language, because consumption scales
-with agent depth rather than syntax:
-
-\begin{itemize}
-\item \textbf{S1 --- local repair} (weight $0.30$): single-file bug fix with a
-      failing regression test; $\le 2$ tool calls expected.
-\item \textbf{S2 --- feature} (weight $0.35$): multi-file change behind an
-      existing interface, tests to be written by the agent.
-\item \textbf{S3 --- migration} (weight $0.20$): mechanical but repository-wide
-      change (API rename, dependency major bump) with a build-and-test gate.
-\item \textbf{S4 --- long-horizon} (weight $0.15$): open-ended issue requiring
-      reproduction, localisation, fix and test, capped at a declared step
-      limit.
-\end{itemize}
-
-Three contamination controls are mandatory, following the reasoning
-of~\cite{jain2025livecodebench}. (i) Tasks are drawn from commits dated after
-the announced training cutoff of every model under test, and the basket rolls
-forward each epoch with a frozen legacy arm retained for comparability.
-(ii) A private hold-out third of the basket is never published; only aggregate
-statistics from it are. (iii) Task statements are paraphrased and identifiers
-in the prose (not the code) are perturbed, so verbatim-recall shortcuts fail.
-
-\subsection{Freezing the harness}
+\textbf{Freezing the harness.}
 \label{sec:harnessfix}
+The easiest way to ruin the measurement is to let the client improve during
+the study. We pin the agent loop, tool schemas, prompts, context and retry
+policy, step limit and decoding, and run two arms each epoch. The \emph{frozen
+arm} ($h_{t_0}$) isolates vendor-side change and estimates $\Delta\ln s$ and
+$\Delta\ln c$ cleanly; the \emph{as-delivered arm} ($h_t$) is the vendor's
+current default client, and its difference from the frozen arm is the value
+the \emph{tooling} added or destroyed. Reporting only the first attributes
+harness progress to the model; only the second hides model regressions behind
+scaffold gains.
 
-The most common way to ruin this measurement is to let the client improve
-during the study. We pin the agent loop by commit hash, the tool schemas, the
-system prompt, the context-compaction policy, the retry policy, the step
-limit, and the decoding parameters. Two arms are then run every epoch:
+\textbf{Instrumentation.} Every run appends one JSON record: task and stratum,
+harness arm and commit, advertised and routed model, oracle result, steps and
+wall time, tokens by class (prefill, decode, reasoning, cache read), quota
+meter before and after, and an energy interval, with \texttt{null} wherever the
+vendor does not expose a field. Token classes stay separate because cached
+reads are far cheaper than fresh prefill, so a cache-hit improvement would
+otherwise look like a capability gain.
 
-\begin{itemize}
-\item \textbf{frozen arm} ($h_{t_0}$) --- isolates vendor-side change; this is
-      the arm that estimates $\Delta\ln s$ and $\Delta\ln c$ cleanly.
-\item \textbf{as-delivered arm} ($h_t$) --- the vendor's current default
-      client at its current defaults; this is what a user actually
-      experiences, and its difference from the frozen arm is the value the
-      \emph{tooling} added or destroyed independently of the model.
-\end{itemize}
-
-Reporting only the frozen arm attributes harness progress to the vendor's
-model; reporting only the as-delivered arm hides model regressions behind
-scaffold improvements. Both are required.
-
-\subsection{Instrumentation}
-
-Every run emits one JSON record. Token classes must be separated: cached
-reads are typically an order of magnitude cheaper than fresh prefill, so a
-harness change that improves cache hit rate looks like a capability gain if
-they are pooled.
-
-\begin{lstlisting}[language=,caption={Run record schema (one JSONL line per
-run). Fields marked \texttt{null} when the vendor does not expose them.},
-label={lst:record}]
-{"run_id":"...","epoch":"2026-09","plan":"vendor-x/t2",
- "task":{"id":"S2-0417","stratum":"S2","repo":"org/repo",
-   "commit":"9f1c...","rev":3},
- "harness":{"arm":"frozen","commit":"a17b...",
-   "step_limit":40,"temp":0.0,"ctx":"summarize@0.7"},
- "model":{"advertised":"...","fingerprint":"...",
-   "routed":null},
- "outcome":{"oracle_pass":true,"steps":17,
-   "wall_s":412.6,"kappa":0.82,"judge":"judge-v1"},
- "tokens":{"prefill":184320,"decode":39114,
-   "reasoning":22870,"cache_read":911002},
- "quota":{"meter_before":0.7314,"meter_after":0.7089,
-   "consumed_nqu":1.83,"unit":"vendor-native"},
- "energy":{"model":"bottom-up-v2","j_lo":4.1e4,
-   "j_hi":1.9e5}}
-\end{lstlisting}
-
-\subsection{Measuring an undisclosed entitlement}
-
-$Q(p,t)$ is the quantity the vendor does not publish, and it is the one with
-the largest recent movement. It can nevertheless be estimated by saturation
-search on a single owned account.
+\textbf{Measuring an undisclosed entitlement.} $Q$ is the quantity the vendor
+does not publish and the one that has moved most; it can be estimated by
+saturation search on a single owned account (Algorithm~\ref{alg:probe}).
 
 \begin{algorithm}[t]
 \caption{Entitlement saturation probe}
 \label{alg:probe}
 \begin{algorithmic}[1]
-\Require calibration task $b_0$, reference harness $h_0$, plan $p$,
-         epoch budget, duty-cycle limit $\rho$
-\State $j \gets 0$; $\hat{Q} \gets 0$
+\Require calibration task $b_0$, harness $h_0$, plan $p$, epoch budget, duty cycle $\rho$
+\State $j\gets0$
 \While{not throttled \textbf{and} epoch not exhausted}
-  \State run $(b_0,h_0)$; record meter reading and latency
-  \State $j \gets j+1$
+  \State run $(b_0,h_0)$; record meter reading and latency; $j\gets j+1$
   \If{response indicates rate limit or tier downgrade}
-     \State record throttle type, reset horizon, and residual capability
-     \State \textbf{break}
+     \State record throttle type, reset horizon, residual capability; \textbf{break}
   \EndIf
   \State sleep to respect $\rho$ \Comment{never exceed documented limits}
 \EndWhile
-\State $\hat{Q} \gets j$ \Comment{in \NQU{} by construction}
-\State \Return $\hat{Q}$, throttle class $\in$ \{hard stop, queue,
-       silent model downgrade\}
+\State \Return $\hat Q\gets j$ (in \NQU{}) and throttle class $\in$ \{hard stop, queue, silent downgrade\}
 \end{algorithmic}
 \end{algorithm}
 
-Three refinements matter. First, the throttle \emph{class} is itself a
-finding: a plan that silently routes to a smaller model on exhaustion has not
-reduced $Q$, it has reduced $s$ --- a different channel of
-Equation~\eqref{eq:decomp} with different consequences for the user. Second,
-many plans use rolling multi-scale windows (per-hour, per-day, per-week);
-$\hat{Q}$ must therefore be reported per window, with the binding window
-identified. Third, the probe is run at a low duty cycle at randomised times
-of day, because entitlement in practice interacts with server load; see
-Section~\ref{sec:ethics}.
+The throttle \emph{class} is itself a finding: a plan that silently routes to a
+smaller model on exhaustion has not reduced $Q$ but $s$, a different channel of
+Eq.~\eqref{eq:decomp}. Plans use rolling multi-scale windows, so $\hat Q$ is
+reported per window with the binding one identified, and the probe runs at low
+duty cycle and randomised times (Section~\ref{sec:ethics}).
 
-\subsection{Capability-drift canary}
-
-A small canary set of tasks with historically stable difficulty is run at
-higher frequency than the full basket. Because we are watching a stream for
-a step change rather than testing a fixed hypothesis, we use a one-sided
-CUSUM~\cite{page1954cusum} on the canary solve rate with an alarm threshold
-calibrated to a declared in-control false-alarm rate. Latency distributions
-and response-format fingerprints are recorded as covariates. We stress that
-these are \emph{signals}, not identification: a change in latency is
-consistent with routing, load, or a serving-stack upgrade, and the protocol
-reports the alarm and the covariates, never a claim about which model served
-the request.
-
-\subsection{Index computation}
-
-\begin{algorithm}[t]
-\caption{Epoch index computation}
-\label{alg:index}
-\begin{algorithmic}[1]
-\Require basket $\mathcal{B}$, arms $\{h_{t_0},h_t\}$, repetitions $k$,
-         base epoch $t_0$
-\For{each arm $h$, task $b_i$, repetition $1..k$}
-  \State execute; append run record (Listing~\ref{lst:record})
-\EndFor
-\State $\hat{s} \gets \sum_i w_i \bar{x}_i$;
-       $\hat{\tilde{s}} \gets \sum_i w_i \overline{x_i\kappa_i}$;
-       $\hat{c} \gets \sum_i w_i \bar{u}_i$
-\State $\hat{Q} \gets$ Algorithm~\ref{alg:probe};
-       $P \gets$ archived public price for epoch $t$
-\State $\hat{V} \gets \hat{Q}\hat{s} / (\hat{c}P)$
-\State bootstrap $B{=}10^4$ resamples \emph{over tasks} (not runs) for
-       CI on $\ln\hat{V}$ \Comment{clustered by task~\cite{efron1994bootstrap}}
-\State $L,Pa \gets$ arm-specific ratios to $t_0$; $F \gets \sqrt{L\,Pa}$
-       \Comment{omit $Pa,F$ if Prop.~\ref{prop:deprecation} applies}
-\State $\delta \gets -\ln F / (t-t_0)$
-\State \Return decomposition~\eqref{eq:decomp} with per-channel CIs
-\end{algorithmic}
-\end{algorithm}
-
-Inference is paired across epochs at the task level and clustered by task in
-the bootstrap, because repetitions of the same task are strongly correlated.
-Per-channel and per-stratum contrasts are reported with Benjamini--Hochberg
-control at $q=0.10$~\cite{benjamini1995fdr}. All five hypotheses of
-Table~\ref{tab:hyp}, the basket, the weights, the arms and the analysis
-script are registered before the first epoch is run; anything not registered
-is labelled exploratory in the report.
+\textbf{Drift canary and inference.} A small canary set of stable difficulty
+runs more often than the full basket. Watching a stream for a step change, we
+use a one-sided CUSUM~\cite{page1954cusum} with a threshold calibrated to a
+declared in-control false-alarm rate; latency and response-format fingerprints
+are covariates, and an alarm is a signal, never an identification of which
+model served the request. Per epoch we compute $\hat s,\hat{\tilde s},\hat c$
+and $\hat V=\hat Q\hat s/(\hat cP)$, bootstrap $10^4$ resamples \emph{over
+tasks}, not runs, for the CI on $\ln\hat V$~\cite{efron1994bootstrap}, form
+$L$, $Pa$ and $F$ (omitting the last two if Prop.~\ref{prop:deprecation}
+applies), and report the decomposition~\eqref{eq:decomp} with per-channel CIs
+under Benjamini--Hochberg control at $q=0.10$~\cite{benjamini1995fdr}. The five
+hypotheses of Table~\ref{tab:hyp}, the basket, weights, arms and analysis
+script are registered before the first epoch; anything else is exploratory.
 
 \begin{table}[t]
-\caption{Pre-registered hypotheses. Each maps to one term of
-Equation~\eqref{eq:decomp} and is one-sided unless noted.}
+\caption{Pre-registered hypotheses, one per term of Eq.~\eqref{eq:decomp}
+(one-sided).}
 \label{tab:hyp}
 \centering
 \footnotesize
@@ -804,162 +490,72 @@ Equation~\eqref{eq:decomp} and is one-sided unless noted.}
 \toprule
 & \textbf{Channel} & \textbf{Statement} \\
 \midrule
-H1 & $\Delta\ln s$ & Capability on the frozen arm is non-decreasing over the
-                     study window. \\
-H2 & $\Delta\ln c - \Delta\ln s$ & Consumption grows faster than capability,
-                     so $\CPS$ rises (Prop.~\ref{prop:elasticity}). \\
-H3 & $\Delta\ln Q$ & Measured entitlement per dollar is non-increasing for
-                     fixed-price plans. \\
-H4 & $\Delta\ln V$ & Value per dollar falls even where H1 holds --- the
-                     progress trap. \\
-H5 & $\Delta\ln \EPS$ & Energy per solved task is non-decreasing despite
-                     falling energy per token (Prop.~\ref{prop:jevons}). \\
+H1 & $\Delta\ln s$ & Frozen-arm capability is non-decreasing. \\
+H2 & $\Delta\ln c-\Delta\ln s$ & Consumption outgrows capability, so $\CPS$ rises (Prop.~\ref{prop:elasticity}). \\
+H3 & $\Delta\ln Q$ & Entitlement per dollar is non-increasing for fixed-price plans. \\
+H4 & $\Delta\ln V$ & Value per dollar falls even where H1 holds (progress trap). \\
+H5 & $\Delta\ln\EPS$ & Energy per solved task is non-decreasing (Prop.~\ref{prop:jevons}). \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\subsection{What it costs to run}
-
-The protocol is deliberately affordable. One epoch of the frozen arm at
-$n=120$ tasks and $k=\kReps$ repetitions is $360$ agent runs per arm. On the
-strata above this is a weekend of wall-clock time on a handful of parallel
-accounts and, at present retail rates, a low-hundreds-of-dollars order of
-magnitude --- within reach of a lab, a developer collective, or a consumer
-organisation, which is the point. The expensive part is not compute but
-discipline: freezing the harness and the judge for a year.
-
-\subsection{Reference implementation and a real pilot run}
+\section{Reference Implementation and a Real Pilot}
 \label{sec:harness}
 
-Unlike the declared scenario of Section~\ref{sec:sim}, this subsection
-reports numbers that were actually measured, against a real account, using
-an open reference implementation of \textsc{Planmeter}. The implementation
-covers every piece specified above: the run-record schema of
-Listing~\ref{lst:record}; a vendor adapter that shells out to the client
-under test and never decides correctness itself; an independent oracle that
-overlays a private held-out test (Section~\ref{sec:protocol}'s contamination
-control) onto the workdir only after the client has finished, then runs it;
-the saturation probe of Algorithm~\ref{alg:probe}; a one-sided CUSUM canary;
-and the epoch aggregation, clustered bootstrap, and Benjamini--Hochberg
-correction of Algorithm~\ref{alg:index}. All of it is pure Python with no
-vendor SDK dependency beyond shelling out to the client's own CLI.
-
-On \pilotDate{} this implementation was run against the author's own Claude
-Code subscription, own account, low duty cycle, per Section~\ref{sec:ethics}.
-The basket is an 8-task pilot spanning all four strata (one or two tasks
-each of S1--S4, each with an independently authored bug or feature request
-and its own oracle, including a private held-out test for S2--S4), run at
-$k=\pilotReps$ repetitions per task on both the frozen and the as-delivered
-arm --- \pilotNRuns{} real runs in total, logged verbatim to JSONL and never
-hand-edited.
+This subsection reports numbers that were actually measured, on the author's
+own accounts, with an open reference implementation of \textsc{Planmeter}: the
+run-record schema; a vendor adapter that shells out to the client's own CLI and
+never decides correctness; an independent oracle that overlays a private
+held-out test only after the client has finished; the probe of
+Algorithm~\ref{alg:probe}; a CUSUM canary; and the bootstrap and
+Benjamini--Hochberg analysis. The basket is a \pilotNTasks{}-task pilot over all four
+strata (S2--S4 with a private held-out test), run at $k=\pilotReps$ repetitions
+on both arms, logged verbatim to JSONL. Every number below flows from the
+published aggregates through \texttt{scripts/figures.py}; the code, adapters
+and exact commands are in the repository (\texttt{harness/RUNBOOK.md}), and
+raw run logs stay private per Section~\ref{sec:ethics}.
 
 \begin{table}[t]
-\caption{Pilot run --- measured, not declared. $\hat s$ is the fraction of
-the \pilotNTasks{} tasks solved (averaged over $k=\pilotReps$ repetitions);
-$\hat c$ is cost per attempt in list-price-equivalent USD, the fallback
-consumption unit used whenever a plan exposes no numeric quota meter
-(Section~\ref{sec:protocol}).}
+\caption{Pilot results, measured, not declared: $\hat s$ and $\hat c$ on the
+frozen/as-delivered arm, and the paired task-clustered bootstrap contrast of
+$\hat c$ (as-delivered minus frozen, $B{=}10^4$, $n{=}\pilotNTasks$ tasks).
+Units differ by client, as Table~\ref{tab:clients} explains.}
 \label{tab:pilot}
 \centering
 \footnotesize
-\begin{tabular}{@{}lcc@{}}
+\begin{tabular}{@{}lccc@{}}
 \toprule
-\textbf{Arm} & $\hat s$ & $\hat c$ (USD-equiv.) \\
+\textbf{Client} ($\hat c$ unit) & $\hat s$ & $\hat c$ & contrast [95\% CI] \\
 \midrule
-Frozen ($h_{t_0}$, pinned model) & \pilotSHatFrozen\% & \pilotCHatFrozen{} \\
-As-delivered (account default) & \pilotSHatDelivered\% & \pilotCHatDelivered{} \\
+Claude Code (USD) & \pilotSHatFrozen/\pilotSHatDelivered\% &
+  \pilotCHatFrozen/\pilotCHatDelivered{} &
+  \pilotDiffPoint{} [\pilotDiffLo{}, \pilotDiffHi{}] \\
+Codex (k tokens) & \codexSHatFrozen/\codexSHatDelivered\% &
+  \codexCHatFrozenK/\codexCHatDeliveredK{} &
+  \codexDiffPoint{} tok [\codexDiffLo{}, \codexDiffHi{}] \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-With real repetitions now available, the arm contrast in $\hat c$ can be
-bootstrapped exactly as Algorithm~\ref{alg:index} prescribes: paired by
-task, clustered over the \pilotNTasks{} tasks, $B=10^4$ resamples. The
-as-delivered arm costs \$\pilotDiffPoint{} more per attempt than the frozen
-arm on average (95\% CI $[\pilotDiffLo{}, \pilotDiffHi{}]$, one-sided
-$p=\pilotDiffP{}$ against ``as-delivered costs more''). The interval
-straddles zero: at $n=\pilotNTasks{}$ this pilot cannot distinguish the two
-arms' consumption, which is exactly the underpowering
-Appendix~\ref{app:power} predicts at this sample size --- a null result
-about the sample, not about the vendor.
-
-The saturation probe (Algorithm~\ref{alg:probe}) has now run twice,
-independently, at low duty cycle: \pilotProbeSessions{} sessions,
-\pilotProbeQSum{} completed calibration cycles combined over
-\pilotProbeMinutes{} minutes of wall-clock time, no throttle in either
-session. This lower-bounds $\hat Q$ for the binding window without
-approaching it --- Section~\ref{sec:ethics}'s duty-cycle constraint and
-resolving a real binding window in one sitting are in tension by
-construction; only sustained measurement across the actual reset window
-closes that gap, and $\hat Q$ here should be read as ``at least this,'' not
-``this.''
-
-The pilot is still deliberately not presented as a measurement of $V$: it
-lacks $\hat Q$ for the reason just given, and $P$ (this codebase never
-hardcodes a real vendor price; Section~\ref{sec:model}). What it does
-demonstrate is that the instrument runs end-to-end against a real account,
-produces exactly the schema this paper specifies, and that its own
-statistics behave as designed --- $\hat s=100\%$ on both arms at $n=8$,
-$k=3$ still has essentially no discriminating power, and the bootstrap
-correctly reports that instead of overclaiming a difference. The
-$n\gtrsim\nReqTen$ tasks required to detect a $10\%$ value change
-(Table~\ref{tab:hyp}'s premise) is not a conservative footnote; it is the
-gap between this pilot and a real epoch, demonstrated rather than asserted.
-Total pilot cost was \$\pilotCostTotal{} list-price-equivalent across all
-\pilotNRuns{} basket runs. Code and run logs: \texttt{harness/} in the
-paper's repository; \texttt{harness/RUNBOOK.md} documents the exact
-sequence used here.
-
-A second client adapter, for GitHub Copilot's CLI, was implemented and its
-field mapping verified against \copilotVerifyCalls{} real calls on
-\copilotVerifyDate{} (\copilotVerifyOraclePass{}/\copilotVerifyCalls{}
-calibration-task runs solved) --- no basket or epoch has been run against it
-yet, so no $\hat s$/$\hat c$ pair is reported for it here. Two findings from
-that verification are themselves evidence for claims made earlier in this
-paper rather than a mere engineering footnote. First, this vendor exposes no
-token-level accounting at all (no prefill, decode, reasoning, or cache-read
-counts anywhere in its structured output) but does expose a genuine native
-quota unit, a count of metered ``premium requests'' per call --- the
-opposite asymmetry from Claude Code, whose subscription exposes no quota
-meter at all and forced the USD-list-price-equivalent fallback used
-throughout Table~\ref{tab:pilot}; Section~\ref{sec:model}'s claim that $Q$
-is the vendor-undisclosed quantity is therefore not uniform across vendors,
-it is vendor-specific by construction. Second, the frozen arm could not be
-instantiated for this client: every explicit model selection was rejected,
-and the account's own model picker confirmed why --- manual model selection
-is disabled at the account/policy level, even for the exact model
-auto-routing itself was observed serving requests with. This is the harness
-freezing assumption of Section~\ref{sec:harnessfix} failing in practice,
-not hypothetically: a harness can only be frozen if the vendor's own client
-permits pinning, and at least one major vendor's client, under at least one
-account tier, does not.
-
-A third client, OpenAI's Codex CLI, was implemented the same way
-(\codexVerifyRuns{} calibration-task runs on \codexVerifyDate{},
-\codexVerifyPass{}/\codexVerifyRuns{} solved). It sits
-at a third point on the metering spectrum (Table~\ref{tab:clients}). It reports token counts (input,
-cached, output, reasoning), it accepts a pinned model, so its frozen arm is
-real, and it exposes a numeric quota meter: the percentage of a rolling
-\codexMeterWindowDays-day window consumed. But that meter is quantised to
-\codexMeterRes\% and did not move across a multi-call run, so it cannot
-resolve the consumption of a single task. A numeric meter is necessary for
-measuring $c$ per attempt but not sufficient, and per-run consumption here
-is the reported token total instead. Across the three clients, per-attempt
-consumption therefore has to be measured through three different
-instruments (a USD-equivalent proxy, a request count, a token total), which
-is the practical reason Section~\ref{sec:protocol} defines NQU relative to a
-frozen calibration task rather than any vendor-native unit.
+\textbf{Claude Code} (\pilotNRuns{} runs, \$\pilotCostTotal{} in
+list-price-equivalent USD, the fallback unit when a plan exposes no meter). The
+contrast straddles zero (one-sided $p=\pilotDiffP$): at $n=\pilotNTasks$ the
+pilot cannot distinguish the arms, exactly the underpowering
+Appendix~\ref{app:power} predicts, a null about the sample, not the vendor. The
+probe ran twice at low duty cycle, \pilotProbeQSum{} calibration cycles in
+\pilotProbeMinutes{} minutes with no throttle, so $\hat Q$ is only a lower
+bound.
 
 \begin{table}[t]
 \caption{What each client's headless output exposes, verified against real
-runs of the adapters in \texttt{harness/adapters/} (Copilot: on the
-tested account; Codex meter steps are 1\%).}
+runs of \texttt{harness/adapters/} (Copilot: on the tested account; Codex
+meter steps are 1\%).}
 \label{tab:clients}
 \centering
 \footnotesize
 \begin{tabular}{@{}lccc@{}}
 \toprule
- & \textbf{Claude Code} & \textbf{Copilot CLI} & \textbf{Codex CLI} \\
+ & \textbf{Claude Code} & \textbf{Copilot} & \textbf{Codex} \\
 \midrule
 Token counts & yes & no & yes \\
 Quota unit & USD proxy & premium req. & \% of window \\
@@ -970,78 +566,75 @@ Throttle reached & no & not tried & yes \\
 \end{tabular}
 \end{table}
 
-Unlike the other two, this client was also run through the full basket: the
-same 8 tasks at $k=\codexReps$ repetitions on both arms, \codexNRuns{} real
-runs, on \codexModel{} (both the pinned model and, on the day of the run,
-the model the as-delivered arm resolved to). $\hat s$ is \codexSHatFrozen\%
-on both arms, the same ceiling as in Table~\ref{tab:pilot}. Mean consumption
-per attempt was \codexCHatFrozenK{}k tokens frozen and \codexCHatDeliveredK{}k
-as-delivered; the paired contrast (as-delivered minus frozen) is
-\codexDiffPoint{} tokens, 95\% CI $[\codexDiffLo{}, \codexDiffHi{}]$. The two
-arms are indistinguishable here by construction rather than by finding:
-while the vendor default coincides with the pinned model the as-delivered
-arm \emph{is} the frozen arm, and the contrast can only become non-null when
-the default changes, which is exactly the event it exists to detect. The
-numeric meter, which did not move within any single run, rose from
-\codexMeterStart\% to \codexMeterEnd\% across the \codexNRuns{} runs
-(\codexTokMillions{}\,M tokens in total), so it resolves consumption only in
-aggregate over a basket, with $\pm1$ point of quantisation uncertainty.
+\textbf{Copilot} (\copilotVerifyOraclePass/\copilotVerifyCalls{} calibration
+runs solved on \copilotVerifyDate; no basket). It exposes no token counts but
+a native quota unit, metered ``premium requests,'' the opposite asymmetry from
+Claude Code. Its frozen arm could not be instantiated: every explicit model
+selection was rejected because the account disables manual selection, even
+for the model auto-routing was observed serving. This is the freezing
+assumption of Section~\ref{sec:harnessfix} failing in practice: a harness can
+be frozen only if the vendor's client permits pinning.
 
-On this client the saturation probe (Algorithm~\ref{alg:probe}) was also run
-to its throttle, which is the first time it terminates in this paper. It ran
-sequentially (one request at a time, $\rho=1$) for \codexProbeHours{} hours
-over \codexProbeSessions{} sessions, a deliberate departure from the 5\% duty
-cycle of Section~\ref{sec:ethics}, authorised by the account owner; at 5\%
-the same probe would have needed \codexProbeDutyDays{} days, longer than the
-\codexMeterWindowDays-day window itself, so the low-load protocol and
-saturating a weekly window are incompatible, as argued above, and here
-demonstrated. After \codexProbeCycles{} completed calibration cycles, every
-one solved and all on one model, the client refused the next request with an
-explicit usage-limit message naming a reset time several days out. The
-throttle class is therefore a hard stop, neither a queue nor a silent
-downgrade, and no capability degradation was visible on the approach to it.
-Two measurement points follow. First, the meter had already read 100\% for
+\textbf{Codex} (\codexNRuns{} basket runs on \codexModel). It reports token
+counts, accepts a pinned model, and exposes a numeric meter, the percentage of
+a rolling \codexMeterWindowDays-day window. That meter is quantised to
+\codexMeterRes\% and does not move within a run, so per-run consumption is the
+reported token total; over the whole basket it rose from \codexMeterStart\% to
+\codexMeterEnd\% (\codexTokMillions\,M tokens). A numeric meter is necessary for
+measuring $c$ per attempt but not sufficient. The two arms are
+indistinguishable by construction: while the vendor default equals the pinned
+model the as-delivered arm \emph{is} the frozen arm, and the contrast can
+become non-null only when the default changes, the event it exists to detect.
+Across the three clients, consumption is therefore measured through three
+instruments (USD proxy, request count, token total), which is why \NQU{} is
+defined relative to a frozen calibration task rather than any native unit.
+
+On Codex the probe also ran to its throttle, the first time it terminates
+here. It ran sequentially ($\rho=1$) for \codexProbeHours{} hours, a deliberate,
+owner-authorised departure from the 5\% duty cycle: at 5\% it would have taken
+\codexProbeDutyDays{} days, longer than the window itself, so the low-load
+protocol and saturating a weekly window are incompatible. After
+\codexProbeCycles{} completed cycles, all solved on one model, the client
+refused the next request with an explicit usage-limit message, a hard stop, with
+no capability degradation on the approach. The meter had read 100\% for
 \codexProbeAtFull{} further completed cycles before the stop, so a displayed
-100\% is not exhaustion. Second, the meter advanced one point per
-\codexProbePerPoint{} cycles of mean \codexProbeTokK{}k tokens, which puts the
-weekly entitlement of this account near \codexProbeQ{} calibration-task
-equivalents. That is a first $\hat Q$ in NQU, but it holds for one account on
-one plan tier in one week, and any other use of the account during the probe
-makes it a lower bound. The stop is recoverable: once the owner reset the
-quota out of band, the next calibration run succeeded on the same model with
-the meter back at \codexPostResetMeter\%. Because that reset was manual, it
-says nothing about the natural reset horizon.
+100\% is not exhaustion. The meter advanced one point per
+\codexProbePerPoint{} cycles of \codexProbeTokK{}k tokens, putting this
+account's weekly entitlement near \codexProbeQ{} calibration-task equivalents:
+a first $\hat Q$ in \NQU, for one account, one tier and one week, and a lower
+bound if the account was used concurrently. After the owner reset the quota
+manually, the next run succeeded on the same model with the meter at
+\codexPostResetMeter\%.
 
-The capability-drift canary has also been exercised for real, though
-weakly. A scheduled cloud routine ran the calibration task $b_0$
-\canaryCycles{} times between \canaryFirstDay{} and \canaryLastDay{} on a
-pinned model; \canarySolved{} of \canaryCycles{} were solved, and the
-one-sided CUSUM described above (declared $p_0=\canaryPzero{}$, threshold
-calibrated to an in-control $\mathrm{ARL}_0$ of \canaryArl{} cycles) raised
-\canaryAlarms{} alarms. As with $\hat s=100\%$ in Table~\ref{tab:pilot}, a
-trivially easy canary on a pinned model gives a CUSUM nothing to detect:
-this series shows that the pipeline runs unattended, not that capability is
-stable. It is a separate channel from the local pilot, a different harness
-that is not poolable with it (Section~\ref{sec:harnessfix}). Its transcripts
-were also messier than the headline: in one run the agent reported a
-timestamp it had not read from the clock, and in another it did not follow
-the one-line output format, so cycles are scored from the platform's own
-fire time and the logged test outcome, not from the agent's self-report.
+\textbf{Canary.} A scheduled cloud routine ran $b_0$ \canaryCycles{} times
+between \canaryFirstDay{} and \canaryLastDay{} on a pinned model;
+\canarySolved{} were solved and the CUSUM ($p_0=\canaryPzero$,
+$\mathrm{ARL}_0=\canaryArl$) raised \canaryAlarms{} alarms. A trivially easy
+canary on a pinned model gives a CUSUM nothing to detect: this shows the
+pipeline runs unattended, not that capability is stable. It is a separate,
+non-poolable channel; agents sometimes misreported timestamps or the output
+format, so cycles are scored from platform fire time and the logged test
+outcome.
+
+The pilot is deliberately not a measurement of $V$: it lacks $P$ (no real
+vendor price is stored) and, for two of three clients, $\hat Q$. It shows that
+the instrument runs end to end against real accounts and that its statistics
+behave as designed: with $\hat s=\pilotSHatFrozen\%$ at $n=\pilotNTasks$ it has no discriminating
+power, and the bootstrap says so. The $n\gtrsim\nReqTen$ tasks needed for a
+$10\%$ effect is the gap between this pilot and a real epoch.
 
 \section{Design Analysis and Simulation Study}
 \label{sec:sim}
 
-We now exercise the model. To repeat Section~\ref{sec:scope}: the parameters
-in Table~\ref{tab:scenario} are \emph{declared inputs}, chosen to be
+The parameters of Table~\ref{tab:scenario} are \emph{declared inputs},
 qualitatively plausible for a twelve-month window in which agentic usage
-became standard. They are not estimates of any product. Everything else in
-this section is computed from them by
-\texttt{scripts/figures.py} and injected into this document mechanically, so
-no number here was typed by hand.
+became standard; they are not estimates of any product. Everything else here
+is computed from them by \texttt{scripts/figures.py} and injected
+mechanically, so no number was typed by hand.
 
 \begin{table}[t]
-\caption{Declared scenario parameters (twelve-month window, one fixed-price
-plan). Illustrative inputs, not measurements.}
+\caption{Declared scenario parameters (twelve months, one fixed-price plan).
+Illustrative inputs, not measurements.}
 \label{tab:scenario}
 \centering
 \footnotesize
@@ -1060,47 +653,39 @@ $e$        & energy / token         & \scendlne    & $\multdlne\times$ \\
 \end{tabular}
 \end{table}
 
-\subsection{Decomposition}
-
-Fig.~\ref{fig:waterfall} applies Proposition~\ref{prop:decomp}. The
-capability channel contributes $\rdlns$ and is the only positive term; it is
-overwhelmed by consumption ($\rdlnc$, which enters with a negative sign) and
-by entitlement ($\rdlnQ$). The net is $\Delta\ln V = \scenTotal$: the plan retains
-$\scenRatio\%$ of its former value per dollar, a loss of $\scenLoss\%$, at an
-unchanged price. The implied debasement rate is
-$\delta = \scenDelta\,\text{yr}^{-1}$, a half-life of $\scenHalfLife$ months.
+\textbf{Decomposition.} Fig.~\ref{fig:waterfall} applies
+Proposition~\ref{prop:decomp}. Capability contributes $\rdlns$ and is the only
+positive term; consumption ($\rdlnc$) and entitlement ($\rdlnQ$) overwhelm it.
+The net is $\Delta\ln V=\scenTotal$: the plan keeps $\scenRatio\%$ of its value
+per dollar, a loss of $\scenLoss\%$ at unchanged price, a debasement rate
+$\delta=\scenDelta\,\text{yr}^{-1}$ and a half-life of $\scenHalfLife$ months. The
+bars are assumed; the point is that one scalar resolves into four attributable
+causes and a plan can lose over half its worth while every published
+capability metric improves.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{figures/fig_waterfall.pdf}
 \caption{Additive decomposition of the twelve-month change in value per
-dollar under the declared scenario. The only channel a vendor publishes is
-the second one.}
+dollar under the declared scenario. The only channel a vendor publishes is the
+second one.}
 \label{fig:waterfall}
 \end{figure}
 
-The point of the figure is not the size of the bars, which are assumed. It is
-that a single scalar --- ``value'' --- resolves into four independently
-attributable causes, and that a plan can lose more than half its worth with
-every published capability metric improving.
-
-\subsection{How much evidence does a claim of devaluation need?}
-
-Suppose a developer wants to test their own suspicion. Model per-task success
-as Bernoulli($p$) with $p=\pSolve$ and per-run consumption as lognormal with
-log-scale $\sigma=\sigLog$; these govern the variance of the ratio estimator
-$\ln(\hat{s}/\hat{c})$. Appendix~\ref{app:power} derives, by the delta
-method,
+\textbf{How much evidence does a claim of devaluation need?} Model per-task
+success as Bernoulli($p$), $p=\pSolve$, and per-run consumption as lognormal
+with log-scale $\sigma=\sigLog$. Appendix~\ref{app:power} derives by the delta
+method, for a value ratio $r$ at power $1-\beta$ and level $\alpha$ in a paired
+two-epoch design with $k$ repetitions,
 \begin{equation}
 n \;\ge\; \frac{2\left(\frac{1-p}{p} + e^{\sigma^2}-1\right)
               \left(z_{1-\alpha/2}+z_{1-\beta}\right)^2}
-             {k\,\left(\ln r\right)^2} ,
+             {k\,\left(\ln r\right)^2} .
 \label{eq:power}
 \end{equation}
-for detecting a value ratio $r$ with power $1-\beta$ at level $\alpha$ in a
-paired two-epoch design with $k$ repetitions per task. With the parameters
-above ($\left(\frac{1-p}{p}+e^{\sigma^2}-1\right) = \varUnit$, $k=\kReps$,
-$\alpha=0.05$, $1-\beta=0.8$):
+With $\left(\frac{1-p}{p}+e^{\sigma^2}-1\right)=\varUnit$, $k=\kReps$,
+$\alpha=0.05$, $1-\beta=0.8$ (Fig.~\ref{fig:power} checks the closed form
+against Monte Carlo):
 
 \begin{center}
 \footnotesize
@@ -1112,42 +697,36 @@ Tasks required $n$   & \nReqTen & \nReqTwenty & \nReqThirty & \nReqFifty \\
 \end{tabular}
 \end{center}
 
-Fig.~\ref{fig:power} confirms the closed form against Monte Carlo. The
-consequence is the sharpest practical finding in this paper. Resolving a
-$10\%$ devaluation takes about \nReqTen{} distinct tasks --- roughly
-\runsTen{} agent runs across the two epochs. A working developer completes
-perhaps a few hundred non-trivial tasks in a year, never repeats one under
-controlled conditions, and changes their own prompting habits continuously.
-Their personal evidence is underpowered by roughly two orders of magnitude.
-
-This dissolves the public argument. The developer who says the plan got worse
-cannot prove it; the vendor who says benchmarks improved is answering a
-different question; and nobody is in a position to adjudicate, because the
-only instrument that could is one nobody is running. It also warns against
-the opposite error: the same analysis says anecdotal reports of
-\emph{improvement} are equally uninformative.
+Resolving a $10\%$ devaluation takes about \nReqTen{} distinct tasks, roughly
+\runsTen{} agent runs across the two epochs. A developer completes a few
+hundred non-trivial tasks a year, never repeats one under control, and keeps
+changing their prompting habits, so their personal evidence is underpowered by
+about two orders of magnitude. The developer who says the plan got worse cannot
+prove it, the vendor who says benchmarks improved answers a different
+question, and anecdotes of \emph{improvement} are equally uninformative.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{figures/fig_power.pdf}
-\caption{Power of the two-epoch paired design. Markers are Monte Carlo
-($4000$ trials per point), lines are the closed form~\eqref{eq:power}.
-Small devaluations are expensive to prove, which is why they go unproven.}
+\caption{Power of the two-epoch paired design: Monte Carlo ($4000$ trials per
+point, markers) against the closed form~\eqref{eq:power} (lines).}
 \label{fig:power}
 \end{figure}
 
 \section{Reporting: the Plan Value Card}
 \label{sec:card}
 
-Measurement without a reporting convention produces incomparable studies. We
-propose a one-page card, Table~\ref{tab:card}, published per plan per epoch
-alongside the raw run records. It is deliberately shaped like a nutrition
-label: the fields a buyer needs in order to compare, in fixed positions, with
-the uncertainty attached.
+Measurement needs a reporting convention. We propose a one-page card per plan
+per epoch (Table~\ref{tab:card}), shaped like a nutrition label: fixed
+positions and the uncertainty attached, published with the raw run records, in
+the spirit of model cards~\cite{mitchell2019modelcards}. A plan whose model
+identity is not contractual and whose deprecation notice is shorter than a
+measurement window is, by Proposition~\ref{prop:deprecation}, a good whose
+price history cannot be constructed.
 
 \begin{table}[t]
-\caption{Plan Value Card --- required fields. Every quantity is reported with
-a $95\%$ interval and the arm it was measured on.}
+\caption{Plan Value Card, required fields; each quantity carries a $95\%$
+interval and its arm.}
 \label{tab:card}
 \centering
 \footnotesize
@@ -1155,214 +734,111 @@ a $95\%$ interval and the arm it was measured on.}
 \toprule
 \textbf{Field} & \textbf{Content} \\
 \midrule
-Plan, price, epoch      & Tier name, public price, archived pricing snapshot URL \\
-Basket                  & ID, version, stratum weights, hold-out fraction \\
-Harness                 & Arm, commit hash, step limit, context policy \\
-Entitlement $\hat{Q}$   & \NQU{} per binding window; throttle class \\
-Capability $s,\tilde{s}$& Raw and quality-adjusted solve rate; judge version \\
-Consumption $c$         & \NQU{} per attempt; token class breakdown \\
-$\CPS$, $\RTP$, $V$     & Derived, Equations~\eqref{eq:rtp}--\eqref{eq:value} \\
-$\CPPI$, $\delta$       & Index vs.\ base epoch; annualised debasement rate \\
-Decomposition           & Four channels of~\eqref{eq:decomp} with CIs \\
-$\EPS$                  & Joules per solved task, interval, energy model ID \\
+Plan, price, epoch      & Tier, public price, archived pricing snapshot \\
+Basket and harness      & ID, version, weights, hold-out; arm, commit, step limit \\
+Entitlement $\hat Q$    & \NQU{} per binding window; throttle class \\
+Capability $s,\tilde s$ & Raw and quality-adjusted solve rate; judge version \\
+Consumption $c$         & \NQU{} per attempt; token-class breakdown \\
+$\CPS$, $\RTP$, $V$, $\delta$ & Eqs.~\eqref{eq:rtp}--\eqref{eq:value}; annualised debasement \\
+Decomposition, $\EPS$   & Four channels of~\eqref{eq:decomp} with CIs; J per solve \\
 Drift canary            & CUSUM state, alarms since last epoch \\
-Model identity          & Advertised name; whether identity is contractual \\
-Deprecation             & Notice period for the base-epoch endpoint;
-                          whether $Pa$/$F$ remain computable \\
+Model identity, deprecation & Whether identity is contractual; notice period; whether $Pa$/$F$ stay computable \\
 Design                  & $n$, $k$, detectable effect at $80\%$ power \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The last two rows are the ones vendors are least likely to volunteer and
-buyers most need. A plan whose model identity is not contractual and whose
-deprecation notice is shorter than a measurement window is, by
-Proposition~\ref{prop:deprecation}, a good whose price history cannot be
-constructed at all.
-
-\section{Threats to Validity}
-
-\textbf{Construct.} A basket is not your repository. Solve rate against a
-test oracle overstates value where tests are weak and understates it where
-the agent produced a correct patch the oracle rejects; $\tilde{s}$ mitigates
-but does not remove this, and an LLM judge imports its own
-biases~\cite{zheng2023judge}. $\hat{Q}$ measured by saturation may differ
-from the entitlement a user with different traffic patterns experiences.
-
-\textbf{Internal.} Nondeterministic serving means repetitions are the unit of
-noise, not runs; server-side A/B experiments can assign one account to a
-treatment for an entire epoch, which is indistinguishable from a global
-change with a single account --- the strongest argument for running the
-protocol across several independent accounts and regions. Harness drift is
-controlled by the frozen arm but the frozen arm ages: an old scaffold may
-interact badly with a new model, biasing $\Delta \ln s$ downward. Reporting
-both arms bounds this.
-
-\textbf{External.} One account, one geography, one time-of-day distribution.
-Entitlement and latency both plausibly depend on regional capacity. Results
-generalise to the population of tasks in the basket and to nothing else,
-which is why weights must be published and defended.
-
-\textbf{Statistical.} Equation~\eqref{eq:power} assumes independence across
-tasks and ignores the design effect from correlated repetitions; it is
-therefore a lower bound on the required $n$. Multi-epoch monitoring is a
-sequential problem and must not be analysed as a series of independent
-$t$-tests.
-
-\textbf{Energy.} Equation~\eqref{eq:energy} is a bottom-up external estimate
-with wide intervals dominated by unknown batch size and utilisation. It
-supports directional claims about $\Delta\ln\EPS$ under declared assumptions
-and does not support point claims about any vendor's footprint.
-
-\section{Ethics and Terms of Service}
+\section{Threats to Validity and Ethics}
 \label{sec:ethics}
 
-The entitlement probe deliberately drives an account to its limit, so its
-boundaries must be explicit. It is run only on accounts the experimenter owns
-and pays for; it respects documented rate limits and never circumvents a
-throttle, a CAPTCHA, or an authentication control; it uses a low duty cycle
-and randomised timing to avoid concentrated load; and it does not attempt to
-enumerate, fingerprint, or reverse-engineer anything beyond what an ordinary
-client observes. What is published is the \emph{method} and the
-\emph{aggregate index}, never material that would help someone abuse a
-service. Where a study finds a systematic discrepancy between advertised and
-measured entitlement, responsible-disclosure practice applies: notify the
-vendor with the run records and a fixed embargo before publication. Finally,
-the environmental figures are external estimates and must be labelled as such
-wherever they appear; presenting bottom-up bounds as vendor emissions data
-would be its own form of the measurement failure this paper is about.
+\textbf{Validity.} A basket is not your repository: solve rate overstates
+value where tests are weak and understates it where a correct patch fails the
+oracle, and an LLM judge imports its own biases~\cite{zheng2023judge}. Serving
+is nondeterministic, so repetitions are the unit of noise, and a server-side
+A/B assignment lasting an epoch is indistinguishable from a global change on
+one account, hence several independent accounts and regions. The frozen arm
+ages, so both arms are reported. Eq.~\eqref{eq:power} ignores the design effect
+of correlated repetitions and is a lower bound on $n$; multi-epoch monitoring
+is sequential and must not be run as independent $t$-tests. The energy bound
+is external with wide intervals and supports directional claims only. The
+pilot of Section~\ref{sec:harness} is a feasibility demonstration, not
+evidence about any plan: \pilotNTasks{} tasks, a solve-rate ceiling, one account per
+vendor, one week for the one entitlement estimate. Each adapter's field
+mapping was verified against real local runs only; a transcript relayed from a
+separate agent session proved wrong in two fields.
+
+\textbf{Ethics and terms of service.} The probe drives an account to its limit,
+so it runs only on accounts the experimenter owns and pays for, respects
+documented limits, never circumvents a throttle, CAPTCHA or authentication
+control, uses low duty cycle and randomised timing, and does not probe beyond
+what an ordinary client observes. We publish the \emph{method} and the
+\emph{aggregate index}, never material that would help abuse a service; a
+systematic discrepancy between advertised and measured entitlement calls for
+responsible disclosure with a fixed embargo; environmental figures are external
+estimates and must be labelled so.
 
 \section{Discussion}
 \label{sec:discussion}
 
 \textbf{Flat rate is a transitional regime.} Proposition~\ref{prop:vendor}
-says a fixed price cannot survive contact with a usage distribution whose
-tail is set by autonomous agents running unattended. The stable forms are
-metered pricing, hybrid plans with an explicit included allowance and a
-transparent overage, or plans that are explicitly insurance contracts with a
-deductible. Each of these is \emph{more} honest than a flat plan with an
-undisclosed and shifting cap, because each makes $Q$ contractual. The index
-proposed here is the tool that would let buyers price that difference.
-
-\textbf{Capability per joule and per dollar become the competitive axis.}
-Corollary~\ref{cor:logscaling} implies that headline accuracy is a saturating
-and increasingly expensive product dimension, while $\CPS$ and $\EPS$ are
-not. A vendor that halves tokens per solved task at constant accuracy
-delivers a larger improvement in $V$ than one that adds two points of
-benchmark score, and today only the second is legible to buyers. Making the
-first legible is the practical purpose of the Plan Value Card.
-
-\textbf{Local models set a reservation value.} The framework gives a rigorous
-form to ``should I self-host?'': compute $V$ for the subscription and for an
-open-weight model on owned or rented hardware, amortising capital over the
-epoch, and compare. Because the local option has $Q=\infty$ by construction
-and a $c$ the operator controls, it becomes competitive exactly when
-subscription debasement $\delta$ is large --- which is also when it is
-hardest to prove. An index makes the switch decision quantitative instead of
-a matter of mood.
-
+says a fixed price cannot survive a usage tail set by unattended agents. Stable
+forms are metered pricing, a hybrid with included allowance and transparent
+overage, or explicit insurance with a deductible; each is more honest than a
+flat plan with an undisclosed, shifting cap, because each makes $Q$
+contractual. \textbf{The axis shifts to work per joule and per dollar.} By
+Corollary~\ref{cor:logscaling} headline accuracy saturates and grows costlier,
+while $\CPS$ and $\EPS$ do not: halving tokens per solve at constant accuracy
+beats two benchmark points, and only the second is legible to buyers.
 \textbf{Deprecation is index destruction.} Proposition~\ref{prop:deprecation}
-identifies a specific piece of missing infrastructure: archived reference
-endpoints, frozen and available at cost for measurement purposes, in the way
-national metrology institutes maintain reference artefacts. Without them the
-real price history of AI capability is not merely unknown --- it is
-unmeasurable in principle, and every retrospective comparison in this
-literature rests on scores that can never be re-run.
-
-\textbf{Transparency as consumer protection.} Unit-pricing regulation exists
-because buyers cannot compare a \SI{750}{\gram} package to a
-\SI{1}{\kilogram} one at the shelf. The AI subscription market has the same
-structure with an added twist: the package size is not printed and can change
-after purchase. The minimal ask is not price regulation but disclosure ---
-publish the entitlement in a stable unit, publish the notice period for model
-withdrawal, and let an index do the rest. Absent that, Akerlof's
-dynamic~\cite{akerlof1970lemons} applies: buyers discount every plan by the
-devaluation they cannot verify, and the vendor who is not devaluing has no
-way to prove it.
-
-\textbf{Limitations of the pilot.} The measured pilot of
-Section~\ref{sec:harness} is a feasibility demonstration, not evidence about
-any plan: eight tasks, a solve-rate ceiling on every client, one account per
-vendor, one week for the one entitlement estimate, and a cloud canary series
-transcribed from run logs. Each adapter's field mapping was verified against
-real local runs, and only those; a transcript relayed from a separate agent
-session proved wrong in two fields, so no adapter trusts a schema it did not
-observe itself.
-
-\textbf{Limitations of the framing.} $\RTP$ measures throughput of solved
-tasks, and throughput is not the same as engineering value: the METR
-result~\cite{metr2025slowdown} is a reminder that more completed agent runs
-can coincide with slower delivery. $\tilde{s}$ is a partial answer. A full
-one would require field measurement of merged, surviving code, which no
-benchmark protocol can supply.
+calls for archived reference endpoints, frozen and available at cost, as
+metrology keeps reference artefacts; without them every retrospective
+comparison rests on scores that can never be re-run. \textbf{Transparency is
+consumer protection.} Unit pricing exists because buyers cannot compare a
+\SI{750}{\gram} package to a \SI{1}{\kilogram} one; here the package size is
+unprinted and can change after purchase. The minimal ask is disclosure of the
+entitlement in a stable unit and of the withdrawal notice period; absent it,
+buyers discount every plan by the devaluation they cannot verify, and the
+honest vendor cannot prove it~\cite{akerlof1970lemons}. Finally, $\RTP$
+measures throughput of solved tasks, not engineering value~\cite{metr2025slowdown};
+$\tilde s$ is a partial answer, and a full one needs field measurement of
+merged, surviving code.
 
 \section{Conclusion}
 
 The question in the title has no answer today, and that is the finding. A
-coding subscription is a bundle of one public number and three private ones,
-and the private ones move. We gave the bundle a value function,
-$V = Qs/(cP)$, an exact four-channel decomposition of its change, and three
-structural results: unit cost of delivered work must rise once test-time
-scaling turns concave; energy per solved task can rise while energy per token
-falls; and compressing entitlement is the profit-maximising response to
-agentic usage, so devaluation needs no villain. We then specified the
-instrument --- a normalised quota unit, an entitlement probe, a frozen
-harness, a drift canary, a pre-registered analysis --- and showed that the
-individual developer who suspects devaluation would need on the order of
-\nReqTen{} controlled tasks to prove a $10\%$ effect, which is why the
-argument never resolves.
-
-What we did not do is run it at the scale an index needs. A reference
-implementation was exercised against three coding-assistant clients on the
-author's own accounts (Section~\ref{sec:harness}), which shows that the
-instrument runs end to end and that each client meters consumption
-differently. But the pilot has $n=8$ tasks, sits at a solve-rate ceiling,
-reached a throttle on only one of the three clients, and measures neither
-$Q$ for the other two nor $P$ for any: it demonstrates feasibility and
-underpowering, not devaluation. A full epoch is deliberately
-left as an open, reproducible protocol rather than a one-off measurement: an
-index is only worth anything if it is maintained by someone other than the
-seller.
+subscription is one public number and three private ones that move. We gave it
+a value function, an exact four-channel decomposition, and three structural
+results: unit cost of work must rise once test-time scaling turns concave;
+energy per solved task can rise while energy per token falls; and compressing
+entitlement is the profit-maximising response to agentic usage, so devaluation
+needs no villain. We specified the instrument and showed that an individual
+developer would need on the order of \nReqTen{} controlled tasks to prove a
+$10\%$ effect, which is why the argument never resolves. What we did not do is
+run it at the scale an index needs. The reference implementation was exercised
+on three clients (Section~\ref{sec:harness}) and shows that each meters
+consumption differently, but the pilot has $n=\pilotNTasks$ tasks, sits at a solve-rate
+ceiling, reached a throttle on one of three clients, and measures neither $Q$
+for the other two nor $P$ for any: it demonstrates feasibility and
+underpowering, not devaluation. A full epoch is left as an open, reproducible
+protocol, since an index is worth something only if maintained by someone other
+than the seller.
 
 \appendices
 
 \section{Sample size for the value ratio}
 \label{app:power}
 
-Let $\hat{s}$ be the mean of $nk$ Bernoulli($p$) draws and $\hat{c}$ the mean
-of $nk$ lognormal draws with log-scale $\sigma$. By the delta method,
-$\operatorname{Var}(\ln\hat{s}) \approx \frac{1-p}{p\,nk}$ and
-$\operatorname{Var}(\ln\hat{c}) \approx \frac{e^{\sigma^2}-1}{nk}$.
-The epoch statistic $T = \ln\hat{s} - \ln\hat{c}$ therefore has
-$\operatorname{Var}(T) = \left(\frac{1-p}{p} + e^{\sigma^2}-1\right)/(nk)$,
-and the two-epoch contrast $T_1 - T_0$ has twice that. Requiring
-$|\ln r| \ge (z_{1-\alpha/2}+z_{1-\beta})\sqrt{\operatorname{Var}(T_1-T_0)}$
-and solving for $n$ gives~\eqref{eq:power}. Correlated repetitions of the
-same task inflate the variance by a design effect
-$1+(k-1)\rho_{\text{ICC}}$, so~\eqref{eq:power} is a lower bound; a study
-should estimate $\rho_{\text{ICC}}$ from a pilot epoch and scale accordingly.
-
-\section{Reproducibility}
-\label{app:repro}
-
-Every figure and every numeric value in this paper is generated by
-\texttt{scripts/figures.py} (seed \texttt{20260904}), which writes
-\texttt{figures/derived.tex}; the document \texttt{\textbackslash input}s that
-file rather than containing typed constants. Re-running the script and
-rebuilding reproduces the paper exactly. The scenario parameters of
-Section~\ref{sec:sim} are the \texttt{SCENARIO} dictionary at the top of
-that script, and changing them changes every dependent statement in the
-text.
-
-Section~\ref{sec:harness}'s pilot numbers are a separate, measured source:
-\texttt{scripts/summarize\_pilot.py} aggregates the raw per-run JSONL logs
-under \texttt{harness/data/} (private, per Section~\ref{sec:ethics}) into a
-small published snapshot, \texttt{pilot\_2026-09\_summary.json}, which
-\texttt{figures.py} reads like any other input; the Codex basket
-(\texttt{summarize\_codex.py}) and the two adapter-verification records
-follow the same pattern. The reference
-implementation --- schema, adapters, oracle, probe, CUSUM, analysis --- is
-under \texttt{harness/}; \texttt{harness/RUNBOOK.md} has the exact commands.
+Let $\hat s$ be the mean of $nk$ Bernoulli($p$) draws and $\hat c$ the mean of
+$nk$ lognormal draws with log-scale $\sigma$. By the delta method
+$\operatorname{Var}(\ln\hat s)\approx\frac{1-p}{p\,nk}$ and
+$\operatorname{Var}(\ln\hat c)\approx\frac{e^{\sigma^2}-1}{nk}$, so
+$T=\ln\hat s-\ln\hat c$ has
+$\operatorname{Var}(T)=\left(\frac{1-p}{p}+e^{\sigma^2}-1\right)/(nk)$ and the
+two-epoch contrast $T_1-T_0$ twice that. Requiring
+$|\ln r|\ge(z_{1-\alpha/2}+z_{1-\beta})\sqrt{\operatorname{Var}(T_1-T_0)}$ and
+solving for $n$ gives~\eqref{eq:power}. Correlated repetitions inflate the
+variance by $1+(k-1)\rho_{\text{ICC}}$, so~\eqref{eq:power} is a lower bound;
+estimate $\rho_{\text{ICC}}$ from a pilot epoch and scale accordingly.
 
 \balance
 \bibliographystyle{IEEEtran}
