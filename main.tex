@@ -63,23 +63,28 @@ landradezanetti@gmail.com}}
 \begin{abstract}
 Developers report that their fixed-price AI coding subscription ``does less
 than it used to,'' while vendors report ever-improving benchmark scores. We
-show that both can be true: benchmarks are \emph{capability-denominated} (they
+argue both can be true: benchmarks are \emph{capability-denominated} (they
 price a model), whereas a subscription is \emph{quota-denominated} (it prices
-an entitlement consumed by an agent harness whose appetite drifts). We define
-the Real Task Purchasing power $\RTP=Qs/c$ and an exact additive decomposition
-of its log change into entitlement, capability, consumption and price, of
-which only price is public. Three structural results follow: concave
-test-time scaling forces the quota cost per solved task upward; a falsifiable
-Jevons condition governs energy per solved task; and quota compression is the
-profit-maximising response to fat-tailed agentic usage. We specify a
-reproducible measurement protocol (a normalised quota unit, an entitlement
-probe, a frozen harness, a drift canary, pre-registered hypotheses) and show
-that resolving a $10\%$ value change needs roughly \nReqTen{} tasks, so an
-individual developer's experience is underpowered by about two orders of
-magnitude. The design-analysis numbers come from a declared simulation. A
-small measured pilot of a reference implementation, run on the author's own
-accounts for three clients, shows that the instrument works end to end and how
-differently clients expose consumption; it does not measure plan value.
+an entitlement consumed by an agent harness whose appetite drifts). Our main
+contribution is \textsc{Planmeter}, a reproducible protocol that measures a
+plan's purchasing power $\RTP=Qs/c$ through a normalised quota unit, an
+entitlement probe, a frozen harness, a drift canary and pre-registered
+hypotheses, with an exact additive decomposition of its log change into
+entitlement, capability, consumption and price. Price is the only component
+that is consistently public and contractually legible across plans. We
+implemented the protocol and ran a small real pilot on three coding-assistant
+clients: each exposes consumption through a different instrument, one cannot be
+frozen at all, and on Codex a probe run to its hard stop completed
+\codexProbeCycles{} calibration cycles, about \codexProbeQ{}
+calibration-task equivalents for that account and week. A design analysis shows
+that resolving a $10\%$ change in plan value needs roughly \nReqTen{} tasks, so
+an individual developer's experience is underpowered by about two orders of
+magnitude. Under stated assumptions we also derive three consequences:
+concave test-time scaling raises the quota cost per solved task, a falsifiable
+Jevons condition governs energy per solved task, and in a stylised vendor model
+quota compression can be profit-maximising under fat-tailed usage. The
+design-analysis numbers come from a declared simulation; the pilot is a
+feasibility demonstration and does not measure plan value.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -105,8 +110,9 @@ $s$ of whichever model the plan routes to on the day, which is not
 contractually fixed and measurably moves~\cite{chen2024drift}; and the
 \textbf{consumption} $c$ an agent harness burns per attempt, which has grown
 by orders of magnitude with chain-of-thought, tool loops and test-repair
-cycles~\cite{wei2022cot,snell2024scaling,yang2024sweagent}. Only the price $P$
-is contractual and public, so a plan can be devalued to half its usefulness
+cycles~\cite{wei2022cot,snell2024scaling,yang2024sweagent}. Price $P$ is the only
+component that is consistently public and contractually legible across plans,
+so a plan can be devalued to half its usefulness
 without a word on the pricing page changing, as a currency can be debased
 without altering the number printed on the note.
 
@@ -167,20 +173,24 @@ substitution bias~\cite{boskin1996toward} and hedonic
 adjustment~\cite{triplett2006hedonic}, and read the market through Akerlof's
 lemons~\cite{akerlof1970lemons}.
 
-\textbf{Contributions.} (i) A value model built on a \emph{Normalised Quota
-Unit} and an exact four-channel decomposition (Section~\ref{sec:model}).
-(ii) Three structural results on why value can fall while capability rises
-(Section~\ref{sec:why}). (iii) \textsc{Planmeter}, a measurement protocol
-(Section~\ref{sec:protocol}). (iv) A closed-form design analysis of the
-evidence a claim of devaluation needs (Section~\ref{sec:sim}). (v) A reference
-implementation with adapters for three coding-assistant clients and a small
-real pilot (Section~\ref{sec:harness}). (vi) A one-page disclosure artifact,
-the \emph{Plan Value Card} (Section~\ref{sec:card}).
+\textbf{Contributions, in order of weight.} (i) \textsc{Planmeter}, a
+measurement protocol (Section~\ref{sec:protocol}) built on a \emph{Normalised
+Quota Unit} and an exact four-channel decomposition of purchasing power
+(Section~\ref{sec:model}). (ii) A reference implementation and a small real
+pilot on three clients (Section~\ref{sec:harness}), whose findings are how
+differently clients expose consumption and what a probe run to the throttle
+yields. (iii) A closed-form design analysis of the evidence a claim of
+devaluation needs (Section~\ref{sec:sim}). (iv) A one-page disclosure artifact,
+the \emph{Plan Value Card} (Section~\ref{sec:card}). (v) Three conditional
+consequences, kept deliberately subordinate: why capability can rise while
+value falls, a task-level Jevons condition, and a stylised vendor model
+(Section~\ref{sec:why}).
 
 \textbf{Scope.} This is an instrument paper. Every number in
 Section~\ref{sec:sim} is the output of a simulation with declared parameters
 (Table~\ref{tab:scenario}) and is not a measurement of any commercial plan.
-Section~\ref{sec:harness} separately reports a small \emph{measured} pilot,
+The consequences of Section~\ref{sec:why} are conditional on stated
+assumptions. Section~\ref{sec:harness} separately reports a small \emph{measured} pilot,
 labelled as such, far too underpowered to estimate plan value
 (Appendix~\ref{app:power}); no vendor price is reproduced, and we do not assert
 that any devaluation has occurred.
@@ -211,7 +221,22 @@ completable in one billing epoch before the plan throttles.
 
 This makes $Q$ an \emph{observable} even when the vendor discloses nothing
 (Algorithm~\ref{alg:probe}), and makes meter redefinition detectable, since
-\NQU{} is anchored to $b_0$'s token counts. With $\bar x_i,\bar u_i$ the means
+\NQU{} is anchored to $b_0$'s token counts.
+
+\textbf{What must stay stable.} Freezing $(b_0,h_0)$ fixes the unit only on the
+client side. Three things can still move: \emph{unit stability} (task and
+harness unchanged), \emph{meter stability} (the vendor's quota accounting for
+identical work unchanged) and \emph{service stability} (caching, routing, token
+accounting and internal execution behind identical requests unchanged).
+Server-side change can break the last two while the first holds, silently
+redefining the \NQU. The protocol therefore records, where the client exposes
+them, tokens by class, cache reads, latency and the meter delta for every $b_0$
+run; a shift in these without a shift in solve rate marks a \emph{unit break},
+across which the index is chain-linked rather than compared. The reference
+implementation's CUSUM monitors solve rate only (Section~\ref{sec:harness}), so
+such breaks are logged but not yet alarmed.
+
+With $\bar x_i,\bar u_i$ the means
 over $k$ repetitions, define basket solve rate and consumption per attempt
 $s(t)\eqdef\sum_i w_i\bar x_i$, $c(t)\eqdef\sum_i w_i\bar u_i$, the quota cost
 per solve and the work a plan buys per epoch,
@@ -247,8 +272,8 @@ Immediate from~\eqref{eq:value} and the additivity of $\ln$; it is exact, not
 a first-order approximation.
 \end{IEEEproof}
 
-Vendors quote the second term, users feel the sum, and the first and third,
-which have moved most, are unobservable outside the vendor.
+Vendors quote the second term and users feel the sum; the first and third are
+not disclosed in a comparable unit, which is why they must be measured.
 
 \textbf{Quality adjustment.} A green test suite lower-bounds value. Following
 hedonic practice~\cite{triplett2006hedonic} we also report a quality-weighted
@@ -274,135 +299,6 @@ only the Laspeyres bound survives, and only while the base harness is runnable.
 
 A vendor that retires endpoints faster than the study window destroys the
 comparability of its own product.
-
-\section{Why Value Can Fall While Capability Rises}
-\label{sec:why}
-
-\textbf{Concavity.} Let $s(\tau)$ be the solve rate at per-attempt token
-budget $\tau$ and $\eta_{s,\tau}\eqdef(\mathrm{d}s/\mathrm{d}\tau)(\tau/s)$ its
-elasticity.
-
-\begin{proposition}[Rising cost per solved task]
-\label{prop:elasticity}
-$\dfrac{\mathrm{d}}{\mathrm{d}\tau}\left(\dfrac{\tau}{s(\tau)}\right) > 0
-\iff \eta_{s,\tau} < 1$.
-\end{proposition}
-\begin{IEEEproof}
-$\frac{\mathrm{d}}{\mathrm{d}\tau}\frac{\tau}{s}=\frac{s-\tau s'}{s^2}
-=\frac{1}{s}(1-\eta_{s,\tau})$ and $s>0$.
-\end{IEEEproof}
-
-\begin{corollary}
-\label{cor:logscaling}
-Under the log-linear test-time scaling reported for reasoning
-models~\cite{snell2024scaling,deepseek2025r1}, $s\approx a+b\ln\tau$ gives
-$\eta_{s,\tau}=b/s\to0$ as $s$ saturates, so cost per solved task grows
-asymptotically linearly in the budget: each extra point of accuracy costs more
-than the last.
-\end{corollary}
-
-Fig.~\ref{fig:elasticity} shows this on a saturating curve with shape
-$\gamma=\gammaHill$: unit cost is minimal at $\tau^\star\approx\tauStar\times
-10^3$ tokens and rises thereafter; at $600\times10^3$ tokens, ordinary for a
-repository-level agent run, it is already $\cpsRatio\times$ the minimum.
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=\textwidth]{figures/fig_elasticity.pdf}
-\caption{Concave test-time scaling makes delivered work more expensive even
-as accuracy improves. (a) A saturating solve-rate curve; the dashed line marks
-unit elasticity. (b) Quota cost per solved task, $\tau/s(\tau)$, minimised at
-$\tau^\star$. Curve shape is declared, not fitted to any vendor.}
-\label{fig:elasticity}
-\end{figure*}
-
-\textbf{The progress trap.} At fixed price, Proposition~\ref{prop:decomp}
-makes the trade-off two-dimensional: value is unchanged exactly on the locus
-$\Delta\ln s=\Delta\ln c-\Delta\ln Q$. With an entitlement change of
-$\Delta\ln Q=\scendlnQ$, every point with a capability gain below
-$\Delta\ln c-\Delta\ln Q$ has capability strictly improving while value
-strictly falls, and no party is lying; the declared scenario of
-Table~\ref{tab:scenario} sits there.
-
-\textbf{Energy (task-level Jevons).}
-\label{sec:jevons}
-With $e(t)$ the marginal energy per token and $\bar\tau(t)$ the mean tokens
-per attempt, energy per solved task is $\EPS=\bar\tau e/s$.
-
-\begin{proposition}[Task-level rebound]
-\label{prop:jevons}
-$\EPS$ increases between two epochs if and only if
-\begin{equation}
-\Delta\ln\bar\tau-\Delta\ln s>-\Delta\ln e .
-\label{eq:jevons}
-\end{equation}
-\end{proposition}
-
-Serving efficiency helps at the task level only if per-token efficiency
-improves faster than agent verbosity net of capability. The condition is
-falsifiable: $\bar\tau$ and $s$ are measured, and $e$ is bounded bottom-up,
-$e=\mathrm{PUE}\cdot\overline{\mathrm{P}}_{\text{node}}
-(\phi/\Lambda_{\text{prefill}}+(1-\phi)/\Lambda_{\text{decode}})$, with
-$\Lambda$ the measured throughput per phase and $\phi$ the prefill share,
-reported as an interval~\cite{samsi2023watts,luccioni2024powerhungry,%
-henderson2020systematic}; it is an external bound, never a vendor disclosure. In the declared scenario a $\eGain\%$ drop in energy
-per token is more than cancelled by $\tauGrowth\times$ more tokens per
-attempt, leaving energy per solved task $\epsChange\%$ higher after twelve
-months, with slack $\jevonsSlack$ in~\eqref{eq:jevons}.
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=\textwidth]{figures/fig_jevons.pdf}
-\caption{The Jevons structure at the task level under the declared scenario
-of Table~\ref{tab:scenario}. (a) Per-token energy falls while tokens per
-attempt rise faster; capability improves only modestly. (b) The product,
-energy per \emph{solved task}, rises. Illustrative parameters, not
-measurements.}
-\label{fig:jevons}
-\end{figure*}
-
-\textbf{The vendor's side.} Devaluation need not be bad faith. Let usage $U$
-be Pareto with tail index $\alpha$ and scale $1$, the shape once a minority of
-users run agents overnight. The vendor sets quota $Q$ at marginal cost
-$\kappa$ per \NQU; retention is $R(Q)=Q^\theta/(Q^\theta+Q_c^\theta)$. Expected
-profit per subscriber is $\pi(Q)=R(Q)[P-\kappa\,m(Q)]$ with
-$m(Q)=\mathbb{E}[\min(U,Q)]$ and $m'(Q)=Q^{-\alpha}$.
-
-\begin{proposition}[Rational quota compression]
-\label{prop:vendor}
-Any interior optimum satisfies
-\begin{equation}
-\frac{R'(Q)}{R(Q)}=\frac{\kappa\,Q^{-\alpha}}{P-\kappa\,m(Q)},
-\label{eq:foc}
-\end{equation}
-and one exists precisely when $\alpha<1+\theta$. Fattening the tail
-(decreasing $\alpha$) raises the right-hand side pointwise and leaves the
-left unchanged, so $Q^\star$ falls.
-\end{proposition}
-\begin{IEEEproof}
-Differentiate $\ln\pi$ to get~\eqref{eq:foc}. As $Q\to\infty$,
-$R'/R\sim\theta Q_c^\theta Q^{-(1+\theta)}$ while the right side decays as
-$Q^{-\alpha}$; profit is eventually increasing iff $1+\theta<\alpha$. For the
-comparative static, $\partial/\partial\alpha$ of the right side is negative for
-$Q>1$, so decreasing $\alpha$ moves the crossing left.
-\end{IEEEproof}
-
-Solving~\eqref{eq:foc} numerically at $P=\priceRef$, $\kappa=\kappaMarg$,
-$\theta=\thetaRet$, moving the tail index from $\alphaThin$ to $\alphaFat$ (the
-qualitative effect of agentic use arriving on a chat-priced plan) drives the
-optimal entitlement to $\times\QstarRel$ of its former level. Subscribers are
-right that plans tighten and vendors are right that they must: the conflict is
-structural, and flat rate for agentic workloads is a transitional regime
-(Section~\ref{sec:discussion}).
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{figures/fig_vendor.pdf}
-\caption{Profit-maximising entitlement as the usage distribution's tail
-fattens, normalised to $Q^\star(\alpha=\alphaThin)$. Declared model
-parameters; the qualitative direction, not the magnitude, is the result.}
-\label{fig:vendor}
-\end{figure}
 
 \section{\textsc{Planmeter}: A Measurement Protocol}
 \label{sec:protocol}
@@ -502,7 +398,16 @@ H5 & $\Delta\ln\EPS$ & Energy per solved task is non-decreasing (Prop.~\ref{prop
 \section{Reference Implementation and a Real Pilot}
 \label{sec:harness}
 
-This subsection reports numbers that were actually measured, on the author's
+\textbf{Headline findings.} (i) The three clients expose consumption through
+three different instruments (Table~\ref{tab:clients}), so no native unit is
+comparable across them. (ii) One client's frozen arm cannot be instantiated on
+the tested account. (iii) A probe run to the throttle on Codex returns a first
+$\hat Q$ of about \codexProbeQ{} calibration-task equivalents for one
+account-week, and shows that the displayed meter does not predict the stop.
+(iv) At $n=\pilotNTasks$ the two arms cannot be separated, as the design
+analysis predicts.
+
+This section reports numbers that were actually measured, on the author's
 own accounts, with an open reference implementation of \textsc{Planmeter}: the
 run-record schema; a vendor adapter that shells out to the client's own CLI and
 never decides correctness; an independent oracle that overlays a private
@@ -749,6 +654,125 @@ Design                  & $n$, $k$, detectable effect at $80\%$ power \\
 \end{tabular}
 \end{table}
 
+\section{Conditional Consequences: Why Value Can Fall While Capability Rises}
+\label{sec:why}
+
+\textbf{Status of the claims.} Propositions~\ref{prop:elasticity}--\ref{prop:vendor}
+are mathematical statements conditional on the assumptions stated beside them.
+The log-linear scaling premise of Corollary~\ref{cor:logscaling} is empirical,
+taken from the literature and not tested here. Every figure and numeric
+example below uses the \emph{declared} parameters of Table~\ref{tab:scenario}
+or the stylised model's own stated parameters and illustrates a mechanism;
+none is a measurement. These consequences are deliberately subordinate to the
+protocol and the pilot: they say what a measured decline would be consistent
+with, not that one has occurred.
+
+\textbf{Concavity.} Let $s(\tau)$ be the solve rate at per-attempt token
+budget $\tau$ and $\eta_{s,\tau}\eqdef(\mathrm{d}s/\mathrm{d}\tau)(\tau/s)$ its
+elasticity.
+
+\begin{proposition}[Rising cost per solved task]
+\label{prop:elasticity}
+$\dfrac{\mathrm{d}}{\mathrm{d}\tau}\left(\dfrac{\tau}{s(\tau)}\right) > 0
+\iff \eta_{s,\tau} < 1$.
+\end{proposition}
+\begin{IEEEproof}
+$\frac{\mathrm{d}}{\mathrm{d}\tau}\frac{\tau}{s}=\frac{s-\tau s'}{s^2}
+=\frac{1}{s}(1-\eta_{s,\tau})$ and $s>0$.
+\end{IEEEproof}
+
+\begin{corollary}
+\label{cor:logscaling}
+If test-time scaling is log-linear, as reported for reasoning
+models~\cite{snell2024scaling,deepseek2025r1}, $s\approx a+b\ln\tau$ gives
+$\eta_{s,\tau}=b/s\to0$ as $s$ saturates, so cost per solved task grows
+asymptotically linearly in the budget: each extra point of accuracy costs more
+than the last.
+\end{corollary}
+
+On an illustrative saturating curve with declared shape $\gamma=\gammaHill$
+(Fig.~\ref{fig:elasticity}), unit cost is minimal at $\tau^\star\approx\tauStar
+\times10^3$ tokens and rises thereafter; at $600\times10^3$ tokens it is
+already $\cpsRatio\times$ the minimum.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_elasticity.pdf}
+\caption{Illustration under a declared curve, not a measurement. (a) A
+saturating solve-rate curve; the dashed line marks unit elasticity. (b) Quota
+cost per solved task, $\tau/s(\tau)$, minimised at $\tau^\star$.}
+\label{fig:elasticity}
+\end{figure*}
+
+\textbf{The progress trap.} At fixed price, Proposition~\ref{prop:decomp}
+makes the trade-off two-dimensional: value is unchanged exactly on the locus
+$\Delta\ln s=\Delta\ln c-\Delta\ln Q$. With $\Delta\ln Q=\scendlnQ$, every
+point with a capability gain below $\Delta\ln c-\Delta\ln Q$ has capability
+strictly improving while value strictly falls, and no party need be lying; the
+declared scenario of Table~\ref{tab:scenario} sits there.
+
+\textbf{Energy (task-level Jevons).}
+\label{sec:jevons}
+With $e(t)$ the marginal energy per token and $\bar\tau(t)$ the mean tokens
+per attempt, energy per solved task is $\EPS=\bar\tau e/s$.
+
+\begin{proposition}[Task-level rebound]
+\label{prop:jevons}
+$\EPS$ increases between two epochs if and only if
+\begin{equation}
+\Delta\ln\bar\tau-\Delta\ln s>-\Delta\ln e .
+\label{eq:jevons}
+\end{equation}
+\end{proposition}
+
+The condition is falsifiable: $\bar\tau$ and $s$ are measured, and $e$ is
+bounded bottom-up, $e=\mathrm{PUE}\cdot\overline{\mathrm{P}}_{\text{node}}
+(\phi/\Lambda_{\text{prefill}}+(1-\phi)/\Lambda_{\text{decode}})$, with
+$\Lambda$ the measured throughput per phase and $\phi$ the prefill share,
+reported as an interval~\cite{samsi2023watts,luccioni2024powerhungry,%
+henderson2020systematic}; it is an external bound, never a vendor disclosure.
+In the declared scenario a $\eGain\%$ drop in energy per token is more than
+cancelled by $\tauGrowth\times$ more tokens per attempt, leaving energy per
+solved task $\epsChange\%$ higher after twelve months.
+
+\textbf{A stylised vendor model.} Let usage $U$ be Pareto with tail index
+$\alpha$ and scale $1$, the shape one expects once a minority of users run
+agents overnight. The vendor sets quota $Q$ at marginal cost $\kappa$ per
+\NQU; retention is $R(Q)=Q^\theta/(Q^\theta+Q_c^\theta)$. Expected profit per
+subscriber is $\pi(Q)=R(Q)[P-\kappa\,m(Q)]$ with $m(Q)=\mathbb{E}[\min(U,Q)]$
+and $m'(Q)=Q^{-\alpha}$.
+
+\begin{proposition}[Quota compression under fat tails, conditional on this model]
+\label{prop:vendor}
+Any interior optimum satisfies
+\begin{equation}
+\frac{R'(Q)}{R(Q)}=\frac{\kappa\,Q^{-\alpha}}{P-\kappa\,m(Q)},
+\label{eq:foc}
+\end{equation}
+and one exists precisely when $\alpha<1+\theta$. Fattening the tail
+(decreasing $\alpha$) raises the right-hand side pointwise and leaves the
+left unchanged, so $Q^\star$ falls.
+\end{proposition}
+\begin{IEEEproof}
+Differentiate $\ln\pi$ to get~\eqref{eq:foc}. As $Q\to\infty$,
+$R'/R\sim\theta Q_c^\theta Q^{-(1+\theta)}$ while the right side decays as
+$Q^{-\alpha}$; profit is eventually increasing iff $1+\theta<\alpha$. For the
+comparative static, $\partial/\partial\alpha$ of the right side is negative for
+$Q>1$, so decreasing $\alpha$ moves the crossing left.
+\end{IEEEproof}
+
+This is a property of the stated parametric model (Pareto usage, saturating
+retention, constant marginal cost), not a structural law of the market: other
+retention or cost structures can weaken or reverse it, and we do not test it
+empirically. Solving~\eqref{eq:foc} at the declared $P=\priceRef$,
+$\kappa=\kappaMarg$, $\theta=\thetaRet$ and moving the tail index from
+$\alphaThin$ to $\alphaFat$ drives the optimal entitlement to $\times\QstarRel$
+of its former level; the magnitude is an artefact of the declared parameters,
+and only the direction follows from the proposition. A plan that tightens is
+therefore consistent with rational vendor behaviour in this model, and flat
+rate for agentic workloads may be a transitional regime
+(Section~\ref{sec:discussion}).
+
 \section{Threats to Validity and Ethics}
 \label{sec:ethics}
 
@@ -781,14 +805,15 @@ estimates and must be labelled so.
 \section{Discussion}
 \label{sec:discussion}
 
-\textbf{Flat rate is a transitional regime.} Proposition~\ref{prop:vendor}
-says a fixed price cannot survive a usage tail set by unattended agents. Stable
-forms are metered pricing, a hybrid with included allowance and transparent
+\textbf{Flat rate may be a transitional regime.} Within its stylised
+assumptions, Proposition~\ref{prop:vendor} suggests a fixed price may not
+survive a usage tail set by unattended agents. Plausible stable forms are
+metered pricing, a hybrid with included allowance and transparent
 overage, or explicit insurance with a deductible; each is more honest than a
 flat plan with an undisclosed, shifting cap, because each makes $Q$
-contractual. \textbf{The axis shifts to work per joule and per dollar.} By
-Corollary~\ref{cor:logscaling} headline accuracy saturates and grows costlier,
-while $\CPS$ and $\EPS$ do not: halving tokens per solve at constant accuracy
+contractual. \textbf{The axis may shift to work per joule and per dollar.} If scaling is
+log-linear (Corollary~\ref{cor:logscaling}), headline accuracy saturates and
+grows costlier, while $\CPS$ and $\EPS$ do not: halving tokens per solve at constant accuracy
 beats two benchmark points, and only the second is legible to buyers.
 \textbf{Deprecation is index destruction.} Proposition~\ref{prop:deprecation}
 calls for archived reference endpoints, frozen and available at cost, as
@@ -807,22 +832,26 @@ merged, surviving code.
 \section{Conclusion}
 
 The question in the title has no answer today, and that is the finding. A
-subscription is one public number and three private ones that move. We gave it
-a value function, an exact four-channel decomposition, and three structural
-results: unit cost of work must rise once test-time scaling turns concave;
-energy per solved task can rise while energy per token falls; and compressing
-entitlement is the profit-maximising response to agentic usage, so devaluation
-needs no villain. We specified the instrument and showed that an individual
-developer would need on the order of \nReqTen{} controlled tasks to prove a
-$10\%$ effect, which is why the argument never resolves. What we did not do is
-run it at the scale an index needs. The reference implementation was exercised
-on three clients (Section~\ref{sec:harness}) and shows that each meters
-consumption differently, but the pilot has $n=\pilotNTasks$ tasks, sits at a solve-rate
-ceiling, reached a throttle on one of three clients, and measures neither $Q$
-for the other two nor $P$ for any: it demonstrates feasibility and
-underpowering, not devaluation. A full epoch is left as an open, reproducible
-protocol, since an index is worth something only if maintained by someone other
-than the seller.
+subscription bundles one consistently public and contractually legible
+component, price, with three that vendors keep private or expose unevenly, and
+the private ones move. We gave the bundle a value function, an exact
+four-channel decomposition and a protocol to measure it, and showed that an
+individual developer would need on the order of \nReqTen{} controlled tasks to
+prove a $10\%$ effect, which is why the argument never resolves. A reference
+implementation on three clients shows that the instrument runs end to end, that
+clients meter consumption through different instruments, and that a probe run
+to the throttle can estimate an entitlement (about \codexProbeQ{}
+calibration-task equivalents for one account and week). Under stated
+assumptions, the unit cost of delivered work rises once test-time scaling is
+concave, energy per solved task can rise while energy per token falls, and
+quota compression can be profit-maximising for a vendor under fat-tailed usage,
+so devaluation need not imply bad faith. What we did not do is run the protocol
+at the scale an index needs: the pilot has $n=\pilotNTasks$ tasks, sits at a
+solve-rate ceiling, reached a throttle on one of three clients, and measures
+neither $Q$ for the other two nor $P$ for any, so it demonstrates feasibility
+and underpowering, not devaluation. A full epoch is left as an open,
+reproducible protocol, since an index is worth something only if maintained by
+someone other than the seller.
 
 \appendices
 
