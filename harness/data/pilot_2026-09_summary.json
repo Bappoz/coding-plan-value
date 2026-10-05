@@ -1,0 +1,135 @@
+{
+  "arms": {
+    "as-delivered": {
+      "by_task": {
+        "cache_lru": {
+          "consumption": 0.26218206666666666,
+          "solve_rate": 1.0,
+          "stratum": "S2"
+        },
+        "config_migration": {
+          "consumption": 0.19391176666666668,
+          "solve_rate": 1.0,
+          "stratum": "S3"
+        },
+        "invoice_bug": {
+          "consumption": 0.27362726666666665,
+          "solve_rate": 1.0,
+          "stratum": "S4"
+        },
+        "merge_intervals": {
+          "consumption": 0.24794000000000002,
+          "solve_rate": 1.0,
+          "stratum": "S1"
+        },
+        "palindrome": {
+          "consumption": 0.25428239999999996,
+          "solve_rate": 1.0,
+          "stratum": "S1"
+        },
+        "rename_api": {
+          "consumption": 0.21812886666666667,
+          "solve_rate": 1.0,
+          "stratum": "S3"
+        },
+        "scheduler_tiebreak": {
+          "consumption": 0.21000246666666667,
+          "solve_rate": 1.0,
+          "stratum": "S4"
+        },
+        "todo_mark_done": {
+          "consumption": 0.24694213333333337,
+          "solve_rate": 1.0,
+          "stratum": "S2"
+        }
+      },
+      "c_hat": 0.24190638833333336,
+      "c_unit": "nqu",
+      "n_runs": 24,
+      "n_tasks": 8,
+      "raw_spend": 5.7210509,
+      "s_hat": 1.0
+    },
+    "frozen": {
+      "by_task": {
+        "cache_lru": {
+          "consumption": 0.2433218,
+          "solve_rate": 1.0,
+          "stratum": "S2"
+        },
+        "config_migration": {
+          "consumption": 0.19760513333333338,
+          "solve_rate": 1.0,
+          "stratum": "S3"
+        },
+        "invoice_bug": {
+          "consumption": 0.2719818,
+          "solve_rate": 1.0,
+          "stratum": "S4"
+        },
+        "merge_intervals": {
+          "consumption": 0.24501626666666665,
+          "solve_rate": 1.0,
+          "stratum": "S1"
+        },
+        "palindrome": {
+          "consumption": 0.23897973333333333,
+          "solve_rate": 1.0,
+          "stratum": "S1"
+        },
+        "rename_api": {
+          "consumption": 0.21432126666666665,
+          "solve_rate": 1.0,
+          "stratum": "S3"
+        },
+        "scheduler_tiebreak": {
+          "consumption": 0.23027563333333334,
+          "solve_rate": 1.0,
+          "stratum": "S4"
+        },
+        "todo_mark_done": {
+          "consumption": 0.21327753333333332,
+          "solve_rate": 1.0,
+          "stratum": "S2"
+        }
+      },
+      "c_hat": 0.23136623083333335,
+      "c_unit": "nqu",
+      "n_runs": 24,
+      "n_tasks": 8,
+      "raw_spend": 5.564337500000001,
+      "s_hat": 1.0
+    }
+  },
+  "cloud_canary": {
+    "alarms": 0,
+    "channel": "cloud-ccr, model pinned",
+    "first_day": "2026-09-07",
+    "last_day": "2026-09-25",
+    "n_cycles": 10,
+    "n_solved": 10,
+    "p0": 0.95,
+    "slack_k": 0.15,
+    "target_arl0": 200.0,
+    "threshold_h": 1.2500002980414138
+  },
+  "epoch": "2026-09",
+  "paired_bootstrap_c_delivered_minus_frozen": {
+    "ci95_hi": 0.017004070833333343,
+    "ci95_lo": -0.003667179166666666,
+    "n_tasks": 8,
+    "one_sided_p_delivered_costs_more": 0.112,
+    "point": 0.006529725
+  },
+  "plan": "claude-code/subscription",
+  "probe": {
+    "any_throttle": false,
+    "n_sessions": 2,
+    "q_hat_per_session": [
+      2,
+      4
+    ],
+    "wall_s_total": 3506.968757015
+  },
+  "reps": 3
+}

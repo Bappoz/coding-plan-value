@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-02",
+  "cli_version": "codex-cli@0.159.2",
+  "b0_runs": 4,
+  "b0_oracle_pass": 4,
+  "adapter_selfcheck_arms_passed": 2,
+  "frozen_model_pinnable": true,
+  "token_accounting_exposed": true,
+  "numeric_meter_exposed": true,
+  "meter_window_minutes": 10080,
+  "meter_resolution_percent": 1.0,
+  "meter_moved_during_run": false,
+  "post_reset_run": {
+    "date": "2026-10-04",
+    "reset": "out-of-band, by the account owner",
+    "meter_percent": 0.0,
+    "solved": true,
+    "same_model": true
+  }
+}

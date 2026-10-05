@@ -1,0 +1,144 @@
+{
+  "arms": {
+    "as-delivered": {
+      "by_task": {
+        "cache_lru": {
+          "consumption": 80967.33333333333,
+          "solve_rate": 1.0,
+          "stratum": "S2"
+        },
+        "config_migration": {
+          "consumption": 80519.66666666667,
+          "solve_rate": 1.0,
+          "stratum": "S3"
+        },
+        "invoice_bug": {
+          "consumption": 100688.0,
+          "solve_rate": 1.0,
+          "stratum": "S4"
+        },
+        "merge_intervals": {
+          "consumption": 79447.33333333333,
+          "solve_rate": 1.0,
+          "stratum": "S1"
+        },
+        "palindrome": {
+          "consumption": 79227.33333333333,
+          "solve_rate": 1.0,
+          "stratum": "S1"
+        },
+        "rename_api": {
+          "consumption": 80043.66666666667,
+          "solve_rate": 1.0,
+          "stratum": "S3"
+        },
+        "scheduler_tiebreak": {
+          "consumption": 100356.66666666667,
+          "solve_rate": 1.0,
+          "stratum": "S4"
+        },
+        "todo_mark_done": {
+          "consumption": 80070.33333333333,
+          "solve_rate": 1.0,
+          "stratum": "S2"
+        }
+      },
+      "c_hat": 83117.47500000002,
+      "c_unit": "nqu",
+      "models": [
+        "gpt-6.1-sol"
+      ],
+      "n_runs": 24,
+      "n_tasks": 8,
+      "raw_tokens": 2043961.0,
+      "s_hat": 1.0
+    },
+    "frozen": {
+      "by_task": {
+        "cache_lru": {
+          "consumption": 80982.66666666667,
+          "solve_rate": 1.0,
+          "stratum": "S2"
+        },
+        "config_migration": {
+          "consumption": 80536.33333333333,
+          "solve_rate": 1.0,
+          "stratum": "S3"
+        },
+        "invoice_bug": {
+          "consumption": 100625.33333333333,
+          "solve_rate": 1.0,
+          "stratum": "S4"
+        },
+        "merge_intervals": {
+          "consumption": 79571.0,
+          "solve_rate": 1.0,
+          "stratum": "S1"
+        },
+        "palindrome": {
+          "consumption": 79201.0,
+          "solve_rate": 1.0,
+          "stratum": "S1"
+        },
+        "rename_api": {
+          "consumption": 80123.0,
+          "solve_rate": 1.0,
+          "stratum": "S3"
+        },
+        "scheduler_tiebreak": {
+          "consumption": 100374.66666666667,
+          "solve_rate": 1.0,
+          "stratum": "S4"
+        },
+        "todo_mark_done": {
+          "consumption": 80193.66666666667,
+          "solve_rate": 1.0,
+          "stratum": "S2"
+        }
+      },
+      "c_hat": 83162.59166666667,
+      "c_unit": "nqu",
+      "models": [
+        "gpt-6.1-sol"
+      ],
+      "n_runs": 24,
+      "n_tasks": 8,
+      "raw_tokens": 2044823.0,
+      "s_hat": 1.0
+    }
+  },
+  "epoch": "2026-10",
+  "meter": {
+    "end": 4.0,
+    "n_runs": 48,
+    "start": 1.0,
+    "unit": "percent_of_primary_window"
+  },
+  "paired_bootstrap_c_delivered_minus_frozen": {
+    "ci95_hi": 7.500000000003638,
+    "ci95_lo": -80.29166666666788,
+    "n_tasks": 8,
+    "one_sided_p_delivered_costs_more": 0.9433,
+    "point": -35.91666666666788
+  },
+  "plan": "codex/subscription",
+  "probe": {
+    "cusum_alarms": 0,
+    "cycles_completed_after_meter_read_full": 8,
+    "meter_end": 100.0,
+    "meter_start": 4.0,
+    "models": [
+      "gpt-6.1-sol"
+    ],
+    "n_cycles_completed": 1678,
+    "n_sessions": 6,
+    "n_solved": 1678,
+    "q_hat_b0_per_window": 1747.9166666666667,
+    "stop_message_matched_marker": true,
+    "throttle_class": "hard_stop",
+    "tokens_per_cycle_mean": 79118.94278903457,
+    "wall_hours": 10.051671167965836,
+    "wall_hours_at_5pct_duty": 201.0334233593167
+  },
+  "reps": 3
+}

@@ -1,0 +1,10 @@
+{
+  "date": "2026-09-06",
+  "cli_version": "github-copilot-cli@1.0.83",
+  "real_verification_calls": 3,
+  "oracle_pass_count": 3,
+  "quota_unit": "copilot_premium_request",
+  "premium_requests_consumed": 3,
+  "token_accounting_exposed": false,
+  "frozen_model_pinnable": false
+}
