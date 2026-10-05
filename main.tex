@@ -78,8 +78,8 @@ frozen at all, and on Codex a probe run to its hard stop completed
 \codexProbeCycles{} calibration cycles, about \codexProbeQ{}
 calibration-task equivalents for that account and week. A design analysis shows
 that resolving a $10\%$ change in plan value needs roughly \nReqTen{} tasks, so
-an individual developer's experience is underpowered by about two orders of
-magnitude. Under stated assumptions we also derive three consequences:
+an individual developer is unlikely to accumulate enough controlled tasks to
+resolve it. Under stated assumptions we also derive three consequences:
 concave test-time scaling raises the quota cost per solved task, a falsifiable
 Jevons condition governs energy per solved task, and in a stylised vendor model
 quota compression can be profit-maximising under fat-tailed usage. The
@@ -108,8 +108,8 @@ factors that drift, mostly silently: the \textbf{entitlement} $Q$ the plan
 grants, in units the vendor defines and may redefine; the \textbf{capability}
 $s$ of whichever model the plan routes to on the day, which is not
 contractually fixed and measurably moves~\cite{chen2024drift}; and the
-\textbf{consumption} $c$ an agent harness burns per attempt, which has grown
-by orders of magnitude with chain-of-thought, tool loops and test-repair
+\textbf{consumption} $c$ an agent harness burns per attempt, which can grow
+substantially with chain-of-thought, tool loops and test-repair
 cycles~\cite{wei2022cot,snell2024scaling,yang2024sweagent}. Price $P$ is the only
 component that is consistently public and contractually legible across plans,
 so a plan can be devalued to half its usefulness
@@ -297,8 +297,8 @@ denominator $V(h_t,t_0)$ is unmeasurable, so $Pa(t)$ and $F(t)$ do not exist;
 only the Laspeyres bound survives, and only while the base harness is runnable.
 \end{proposition}
 
-A vendor that retires endpoints faster than the study window destroys the
-comparability of its own product.
+A vendor that retires endpoints faster than the study window prevents
+longitudinal comparability under this index.
 
 \section{\textsc{Planmeter}: A Measurement Protocol}
 \label{sec:protocol}
@@ -573,8 +573,9 @@ capability metric improves.
 \centering
 \includegraphics[width=\columnwidth]{figures/fig_waterfall.pdf}
 \caption{Additive decomposition of the twelve-month change in value per
-dollar under the declared scenario. The only channel a vendor publishes is the
-second one.}
+dollar under the declared scenario. Capability is the channel most commonly benchmarked
+publicly; price is contractually visible, while entitlement and consumption are
+not disclosed in a comparable unit.}
 \label{fig:waterfall}
 \end{figure}
 
@@ -604,10 +605,10 @@ Tasks required $n$   & \nReqTen & \nReqTwenty & \nReqThirty & \nReqFifty \\
 \end{center}
 
 Resolving a $10\%$ devaluation takes about \nReqTen{} distinct tasks, roughly
-\runsTen{} agent runs across the two epochs. A developer completes a few
-hundred non-trivial tasks a year, never repeats one under control, and keeps
-changing their prompting habits, so their personal evidence is underpowered by
-about two orders of magnitude. The developer who says the plan got worse cannot
+\runsTen{} agent runs across the two epochs. An individual developer is unlikely to
+accumulate that many distinct tasks while holding the harness and prompting
+policy fixed, so their personal evidence cannot resolve a devaluation of that
+size. The developer who says the plan got worse cannot
 prove it, the vendor who says benchmarks improved answers a different
 question, and anecdotes of \emph{improvement} are equally uninformative.
 
