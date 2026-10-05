@@ -1,0 +1,14 @@
+harness/data/*
+!harness/data/pilot_*_summary.json
+!harness/data/copilot_adapter_verification_*.json
+!harness/data/codex_adapter_verification_*.json
+__pycache__/
+*.pyc
+main.aux
+main.bbl
+main.blg
+main.log
+main.out
+main.pdf
+figures/*.pdf
+CLAUDE.md
